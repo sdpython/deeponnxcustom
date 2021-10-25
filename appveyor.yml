@@ -1,0 +1,31 @@
+image:
+  - Visual Studio 2019
+environment:
+  matrix:
+    - PYTHON: "C:\\Python39-x64"
+      PYTHON_VERSION: "3.9.x"
+      PYTHON_ARCH: "64"
+init:
+  - "ECHO %PYTHON% %PYTHON_VERSION% %PYTHON_ARCH%"
+
+install:
+  - "%PYTHON%\\python -m pip install -r requirements.txt"
+  - "%PYTHON%\\python -m pip install -r requirements-dev.txt"
+  - "%PYTHON%\\python -m pip install onnxruntime"
+build: off
+
+before_test:
+  - "%PYTHON%\\python -u setup.py build_ext --inplace"
+
+test_script:
+  - "%PYTHON%\\python setup.py unittests"
+  - "%PYTHON%\\python -m flake8 deeponnxcustom"
+  - "%PYTHON%\\python -m flake8  _doc/examples"
+
+after_test:
+  - "%PYTHON%\\python setup.py bdist_wheel"
+  - "%PYTHON%\\python -m deeponnxcustom check"
+
+artifacts:
+  - path: dist
+    name: deeponnxcustom
