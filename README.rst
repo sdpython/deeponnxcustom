@@ -6,7 +6,7 @@
     :target: https://app.travis-ci.com/github/sdpython/deeponnxcustom
     :alt: Build status
 
-.. image:: https://ci.appveyor.com/api/projects/status/a3sn45a2fayoxb5q?svg=true
+.. image:: https://ci.appveyor.com/api/projects/status/g9wt6riyh6n74t23?svg=true
     :target: https://ci.appveyor.com/project/sdpython/deeponnxcustom
     :alt: Build Status Windows
 
