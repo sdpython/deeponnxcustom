@@ -41,8 +41,8 @@ class TestDocumentationExample(unittest.TestCase):
         found = os.listdir(fold)
         tested = 0
         for name in sorted(found):
-            if name < "plot_u":
-                continue
+            # if name < "plot_u":
+            #     continue
 
             with self.subTest(name=name):
                 if name.startswith("plot_") and name.endswith(".py"):

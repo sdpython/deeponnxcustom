@@ -108,12 +108,11 @@ def benchmark(N=1000, n_features=20, hidden_layer_sizes="26,25", max_iter=1000,
     y = y.astype(numpy.float32)
     X_train, X_test, y_train, y_test = train_test_split(X, y)
 
-
     class Net(torch.nn.Module):
         def __init__(self, n_features, hidden, n_output):
             super(Net, self).__init__()
             self.hidden = []
-            
+
             size = n_features
             for i, hid in enumerate(hidden_layer_sizes):
                 self.hidden.append(torch.nn.Linear(size, hid))
@@ -137,7 +136,7 @@ def benchmark(N=1000, n_features=20, hidden_layer_sizes="26,25", max_iter=1000,
         len(list(nn.parameters())), len(nn.hidden)))
     for i, p in enumerate(nn.parameters()):
         print("  p[%d].shape=%r" % (i, p.shape))
-    
+
     optimizer = torch.optim.SGD(nn.parameters(), lr=learning_rate_init)
     criterion = torch.nn.MSELoss(size_average=False)
     batch_no = len(X_train) // batch_size
@@ -197,7 +196,7 @@ def benchmark(N=1000, n_features=20, hidden_layer_sizes="26,25", max_iter=1000,
 
     nn_ort = ORTModule(nn)
     optimizer = torch.optim.SGD(nn_ort.parameters(), lr=learning_rate_init)
-    criterion = torch.nn.MSELoss(size_average=False)    
+    criterion = torch.nn.MSELoss(size_average=False)
 
     # exclude onnx conversion
     inputs = torch.tensor(
