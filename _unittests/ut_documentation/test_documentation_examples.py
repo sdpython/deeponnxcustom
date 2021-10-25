@@ -78,7 +78,7 @@ class TestDocumentationExample(unittest.TestCase):
                                 pass
                             elif ('Please fix either the inputs or '
                                     'the model.') in st:
-                                # onnxruntime datasets changed in master
+                                # onnxruntime datasets changed in main
                                 # branch, still the same in released
                                 # version on pypi
                                 pass

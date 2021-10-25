@@ -17,7 +17,7 @@ set_sphinx_variables(__file__, "deeponnxcustom", "Xavier Dupré", 2021,
                      "alabaster", alabaster.get_path(),
                      locals(), extlinks=dict(
                          issue=('https://github.com/sdpython/deeponnxcustom/issues/%s', 'issue')),
-                     title="deeponnxcustom", book=True)
+                     title="deeponnxcustom", book=True, branch='main')
 
 extensions.extend([
     "sphinxcontrib.blockdiag"

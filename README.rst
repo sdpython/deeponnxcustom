@@ -1,8 +1,8 @@
 
-.. image:: https://circleci.com/gh/sdpython/deeponnxcustom/tree/master.svg?style=svg
-    :target: https://circleci.com/gh/sdpython/deeponnxcustom/tree/master
+.. image:: https://circleci.com/gh/sdpython/deeponnxcustom/tree/main.svg?style=svg
+    :target: https://circleci.com/gh/sdpython/deeponnxcustom/tree/main
 
-.. image:: https://travis-ci.com/sdpython/deeponnxcustom.svg?branch=master
+.. image:: https://travis-ci.com/sdpython/deeponnxcustom.svg?branch=main
     :target: https://app.travis-ci.com/github/sdpython/deeponnxcustom
     :alt: Build status
 
@@ -10,7 +10,7 @@
     :target: https://ci.appveyor.com/project/sdpython/deeponnxcustom
     :alt: Build Status Windows
 
-.. image:: https://codecov.io/gh/sdpython/deeponnxcustom/branch/master/graph/badge.svg
+.. image:: https://codecov.io/gh/sdpython/deeponnxcustom/branch/main/graph/badge.svg
     :target: https://codecov.io/gh/sdpython/deeponnxcustom
 
 .. image:: https://badge.fury.io/py/deeponnxcustom.svg
@@ -43,7 +43,7 @@
 deeponnxcustom: custom ONNX and deep learning
 =============================================
 
-.. image:: https://raw.githubusercontent.com/sdpython/deeponnxcustom/master/doc/_static/logo.png
+.. image:: https://raw.githubusercontent.com/sdpython/deeponnxcustom/main/doc/_static/logo.png
     :width: 50
 
 `documentation <http://www.xavierdupre.fr/app/deeponnxcustom/helpsphinx/index.html>`_

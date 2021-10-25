@@ -13,7 +13,7 @@ install:
   - $PYINT -m pip install --upgrade --no-cache-dir --no-deps --index http://localhost:8067/simple/ scikit-learn>=0.22 --extra-index-url=https://pypi.python.org/simple/
   - $PYINT -m pip install --upgrade --no-cache-dir --no-deps --index http://localhost:8067/simple/ onnx --extra-index-url=https://pypi.python.org/simple/
   - $PYINT -m pip install --upgrade --no-cache-dir --no-deps --index http://localhost:8067/simple/ onnxruntime-training --extra-index-url=https://pypi.python.org/simple/
-  - $PYINT -m pip install --upgrade --no-cache-dir --no-deps --index http://localhost:8067/simple/ onnxconverter-common skl2onnx onnx mlprodict mlinsights --extra-index-url=https://pypi.python.org/simple/
+  - $PYINT -m pip install --upgrade --no-cache-dir --no-deps --index http://localhost:8067/simple/ onnxconverter-common skl2onnx onnx mlprodict mlinsights onnxcustom --extra-index-url=https://pypi.python.org/simple/
   - $PYINT -m pip install -r requirements.txt
   - $PYINT -m pip install -r requirements-dev.txt
   - $PYINT -m pip install funcparserlib==1.0.0a0
