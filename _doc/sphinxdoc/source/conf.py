@@ -64,6 +64,8 @@ imgmath_latex_preamble += custom_preamble
 latex_elements['preamble'] += custom_preamble
 
 epkg_dictionary = {
+    'autograd functions':
+        'https://pytorch.org/tutorials/beginner/examples_autograd/two_layer_net_custom_function.html',
     'C': 'https://en.wikipedia.org/wiki/C_(programming_language)',
     'C++': 'https://en.wikipedia.org/wiki/C%2B%2B',
     'cython': 'https://cython.org/',
