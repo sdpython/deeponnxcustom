@@ -63,7 +63,13 @@ custom_preamble = """\n
 imgmath_latex_preamble += custom_preamble
 latex_elements['preamble'] += custom_preamble
 
-epkg_dictionary = {
+intersphinx_mapping.update({
+    'torch': ('https://pytorch.org/docs/stable/', None),
+    'pandas_streaming':
+        ('http://www.xavierdupre.fr/app/pyquickhelper/helpsphinx/', None),    
+)}
+
+epkg_dictionary.update({
     'autograd functions':
         'https://pytorch.org/tutorials/beginner/examples_autograd/two_layer_net_custom_function.html',
     'C': 'https://en.wikipedia.org/wiki/C_(programming_language)',
@@ -111,7 +117,7 @@ epkg_dictionary = {
         '#ai.onnx.ml.TreeEnsembleRegressor',
     'xgboost': 'https://xgboost.readthedocs.io/en/latest/',
     'XGBoost': 'https://xgboost.readthedocs.io/en/latest/',
-}
+})
 
 nblinks = {
     'alter_pipeline_for_debugging': 'http://www.xavierdupre.fr/app/onnxcustom/helpsphinx/onnxcustom/helpers/pipeline.html#onnxcustom.helpers.pipeline.alter_pipeline_for_debugging',

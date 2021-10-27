@@ -4,12 +4,12 @@
 """
 import logging
 from textwrap import dedent
-from onnxruntime import TrainingSession
+from onnxruntime import InferenceSession
 from onnxruntime.capi._pybind_state import (  # pylint: disable=E0611
     TrainingAgent, OrtValueCache, OrtModuleGraphBuilder,
     OrtModuleGraphBuilderConfiguration,
     TrainingGraphTransformerConfiguration, OrtValueVector,
-    PartialGraphExecutionState, TrainingParameters)
+    PartialGraphExecutionState)
 from onnxruntime import OrtValue, RunOptions
 from torch import from_numpy, is_grad_enabled  # pylint: disable=E0611
 from torch.autograd import Function
@@ -152,7 +152,7 @@ class TorchOrtFactory:
 
     def __init__(self, onnx_model, weights_to_train,
                  input_names=None, output_names=None,
-                 class_name=None, training_parameters=None,
+                 class_name=None,
                  sess_options=None, providers=None,
                  provider_options=None, run_options=None,
                  graph_builder_config=None):
@@ -160,12 +160,7 @@ class TorchOrtFactory:
         self.input_names = input_names
         self.output_names = output_names
         self.class_name = class_name
-
-        p = TrainingParameters()
-        p.loss_output_name = "loss"
-        p.weights_to_train = set(weights_to_train)
-        p.set_gradients_as_graph_outputs = True
-        self.training_parameters = p
+        self.weights_to_train = weights_to_train
 
         self.provider_options = provider_options
         self.sess_options = sess_options
@@ -198,7 +193,7 @@ class TorchOrtFactory:
             config = OrtModuleGraphBuilderConfiguration()
             config.initializer_names = initializer_names
             config.initializer_names_to_train = list(
-                sorted(self.training_parameters.weights_to_train))
+                sorted(self.weights_to_train))
             config.input_names_require_grad = input_names
             config.build_gradient_graph = True
 
@@ -214,9 +209,47 @@ class TorchOrtFactory:
         "usual"
         return "%s(...)" % self.__class__.__name__
 
-    def create_class(self, enable_logging=False):
-        """
+    @staticmethod
+    def _repr_helper_(obj, indent=0):
+        "used to improve logging messages"
+        if obj is None:
+            return 'None'
+        rows = []
+        for c in sorted(dir(obj)):
+            if c[0] == '_':
+                continue
+            try:
+                value = getattr(obj, c)
+            except AttributeError:
+                continue
+            rows.append("%s=%r" % (c, value))
 
+        if indent == 0:
+            return "%s(%s)" % (obj.__class__.__name__, ", ".join(rows))
+        return "%s(\n    %s)" % (
+            obj.__class__.__name__,
+            "\n    ".join(rows))
+
+    def create_class(self, enable_logging=False, keep_models=False):
+        """
+        Creates a class which inherits from
+        :func:`torch.autograd.Function` and implements forward,
+        backward methods using ONNX. The function dynamically
+        creates a new class and pushes every needed objects
+        as static attributes of the new class.
+        
+        :param enable_logging: used to debug, logs every building step,
+            at info level, logs information while processing forward
+            and backward at debug level
+        :param keep_models: stores additional information as
+            static attributes
+        :return: a new class    
+
+        The pattern follows the documentation described in
+        :epkg:`autograd functions`. Methods forward and backward
+        are replaced by onnx implementations, runtime is
+        :epkg:`onnxruntime-training`.
+    
         ::
 
             class CustomClass(torch.autograd.Function):
@@ -248,31 +281,62 @@ class TorchOrtFactory:
             logger.info("[TorchOrtFactory] output_names=%r",
                         self.output_names)
             logger.info("[TorchOrtFactory] weights_to_train=%r",
-                        self.training_parameters.weights_to_train)
+                        self.weights_to_train)
 
         builder = OrtModuleGraphBuilder()
+
         if logger is not None:
             logger.info("[TorchOrtFactory] OrtModuleGraphBuilder.initialize")
+            logger.info("[TorchOrtFactory] graph_builder_config=%s",
+                TorchOrtFactory._repr_helper_(
+                    self.graph_builder_config, indent=4))
+            logger.info("[TorchOrtFactory] graph_builder_config.graph_transformer_config=%s",
+                TorchOrtFactory._repr_helper_(
+                    self.graph_builder_config.graph_transformer_config, indent=4))
+            logger.info("[TorchOrtFactory] graph_builder_config.graph_transformer_config.propagate_cast_ops_config=%s",
+                TorchOrtFactory._repr_helper_(
+                    self.graph_builder_config.graph_transformer_config.propagate_cast_ops_config, indent=4))
+
         builder.initialize(
             self.onnx_model.SerializeToString(),
             self.graph_builder_config)
-        if logger is not None:
-            logger.info("[TorchOrtFactory] OrtModuleGraphBuilder.get_model")
-        train_onnx_model = builder.get_model()
 
         if logger is not None:
+            logger.info("[TorchOrtFactory] OrtModuleGraphBuilder.build")
+        builder.build()
+
+        if logger is not None:
+            logger.info("[TorchOrtFactory] OrtModuleGraphBuilder.get_model")
+
+        train_onnx_model_serialized = builder.get_model()
+        with open("debug.onnx", "wb") as f:
+            f.write(train_onnx_model_serialized)
+
+        optimized_pre_grad_model = builder.get_inference_optimized_model()
+        with open("debug2.onnx", "wb") as f:
+            f.write(optimized_pre_grad_model)
+        graph_info = builder.get_graph_info()
+
+        if logger is not None:
+            logger.info("[TorchOrtFactory] graph_info=%s",
+                TorchOrtFactory._repr_helper_(
+                    graph_info, indent=4))
             logger.info("[TorchOrtFactory] create TrainSession")
-        sess = TrainingSession(
-            train_onnx_model.SerializeToString(),
-            parameters=self.training_parameters,
-            provider_options=self.provider_options,
+            logger.info("[TorchOrtFactory] sess_options=%s",
+                TorchOrtFactory._repr_helper_(
+                    self.sess_options, indent=4))
+            logger.info("[TorchOrtFactory] providers=%r", self.providers)            
+
+        sess = InferenceSession(
+            train_onnx_model_serialized,
             sess_options=self.sess_options,
+            provider_options=self.provider_options,
             providers=self.providers)
 
         if logger is not None:
             logger.info("[TorchOrtFactory] create training agent")
         training_agent = TrainingAgent(
-            ort._sess,
+            sess,
             self.input_names,
             fw_outputs_device_info,
             bw_fetches_names,
@@ -288,24 +352,31 @@ class TorchOrtFactory:
                 "[TorchOrtFactory] output_names=%r", self.output_names)
             logger.info(
                 "[TorchOrtFactory] weights_to_train=%r",
-                self.training_parameters.weights_to_train)
+                self.weights_to_train)
 
-        newclass = type(
-            self.class_name, (TorchOrtFunction,),
-            {'__doc__': doc,
-             '__module__': __name__,
-             '_run_options': self.run_options,
-             '_sess': sess,
-             '_training_agent': training_agent,
-             '_cache': OrtValueCache(),
-             '_update_cache': False,
-             '_state_': [],
-             '_logger': logger,
-             '_input_names': self.input_names,
-             '_output_names': self.output_names,
-             '_weights_to_train': list(sorted(
-                 self.training_parameters.weights_to_train)),
-             'forward': staticmethod(ort_forward),
-             'backward': staticmethod(ort_backward)})
+        kwargs = {
+            '__doc__': doc,
+            '__module__': __name__,
+            '_run_options': self.run_options,
+            '_sess': sess,
+            '_training_agent': training_agent,
+            '_cache': OrtValueCache(),
+            '_update_cache': False,
+            '_state_': [],
+            '_logger': logger,
+            '_input_names': self.input_names,
+            '_output_names': self.output_names,
+            '_weights_to_train': list(sorted(
+                self.weights_to_train)),
+            'forward': staticmethod(ort_forward),
+            'backward': staticmethod(ort_backward),
+            '_graph_info': graph_info}
 
+        if keep_models:
+            kwargs = kwargs.update(dict(
+                _trained_onnx=onnx.load(BytesIO(train_onnx_model_serialized)),
+                _optimized_pre_grad_model=onnx.load(BytesIO(optimized_pre_grad_model)),
+                _graph_builder=builder))
+
+        newclass = type(self.class_name, (TorchOrtFunction,), **kwargs)
         return newclass

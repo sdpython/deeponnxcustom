@@ -33,7 +33,7 @@ class TestTorchOrt(ExtTestCase):
             def backward(ctx, grad_output):  # pylint: disable=W0221
                 x_input, = ctx.saved_tensors
                 grad_input = grad_output.clone()
-                grad_input[input < 0] = 0
+                grad_input[x_input < 0] = 0
                 return grad_input
 
         dtype = torch.float  # pylint: disable=E1101
@@ -105,6 +105,8 @@ class TestTorchOrt(ExtTestCase):
 
 
 if __name__ == "__main__":
+    import onnxruntime
+    print(onnxruntime.__file__)
     import logging
     logger = logging.getLogger('deeponnxcustom')
     logger.setLevel(logging.DEBUG)
