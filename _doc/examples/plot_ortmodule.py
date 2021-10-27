@@ -158,10 +158,10 @@ def save_as_onnx(model, filename, size, target_opset=14, batch_size=1, device='c
         dynamic_axes={'input': {0: 'batch_size'},
                       'output': {0: 'batch_size'}})
 
+
 net = build_model()
 save_as_onnx(net, "model.onnx", 5)
 
 with open("model.onnx", "rb") as f:
     onx = onnx.load(f)
 print(onx)
-
