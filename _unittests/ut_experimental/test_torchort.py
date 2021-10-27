@@ -20,7 +20,7 @@ from deeponnxcustom.experimental.torchort import TorchOrtFactory
 
 class TestTorchOrt(ExtTestCase):
 
-    class MyReLUAdd(Function):
+    class MyReLUAdd(Function):  # pylint: disable=W0223
         @staticmethod
         def forward(ctx, x_input):  # pylint: disable=W0221
             ctx.save_for_backward(x_input)

@@ -12,7 +12,8 @@ from onnxruntime.capi._pybind_state import (  # pylint: disable=E0611
     OrtModuleGraphBuilderConfiguration, OrtDevice,
     TrainingGraphTransformerConfiguration, OrtValueVector,
     PartialGraphExecutionState)
-from onnxruntime.capi._pybind_state import SessionIOBinding  # pylint: disable=E0611
+from onnxruntime.capi._pybind_state import (  # pylint: disable=E0611
+    SessionIOBinding)
 from onnxruntime import RunOptions
 from torch import is_grad_enabled  # pylint: disable=E0611
 from torch.autograd import Function
@@ -81,11 +82,13 @@ def ort_forward(ctx, *inputs):
 
             # for i in range(self._cache_start, len(forward_outputs)):
             #     self.cache.insert(
-            #         self._cached_node_arg_names[i - cls._cache_start], forward_outputs[i])
+            #         self._cached_node_arg_names[i - cls._cache_start],
+            #         forward_outputs[i])
             # self._update_cache = False
             # if logger is not None:
             #     _log("to torck.tensor")
-            # return tuple(_utils._ortvalue_to_torch_tensor(forward_outputs[i], device) for i in range(self._cache_start))
+            # return tuple(_utils._ortvalue_to_torch_tensor
+            # (forward_outputs[i], device) for i in range(self._cache_start))
 
         else:
             if logger is not None:
@@ -120,7 +123,8 @@ def ort_forward(ctx, *inputs):
 
         # if the shape is known in advance
         # iobinding.bind_output(
-        #    output_desc.name, torch_tensor.device.type, _utils.get_device_index(target_device),
+        #    output_desc.name, torch_tensor.device.type,
+        #    _utils.get_device_index(target_device),
         #    _utils.dtype_torch_to_numpy(torch_tensor.dtype),
         #    list(torch_tensor.size()), torch_tensor.data_ptr())
 
@@ -367,16 +371,18 @@ class TorchOrtFactory:
         builder = OrtModuleGraphBuilder()
 
         if logger is not None:
+            cf = self.graph_builder_config.graph_transformer_config
+            cfp = cf.propagate_cast_ops_config
             logger.info("[TorchOrtFactory] OrtModuleGraphBuilder.initialize")
             logger.info("[TorchOrtFactory] graph_builder_config=%s",
                         TorchOrtFactory._repr_helper_(
                             self.graph_builder_config, indent=4))
-            logger.info("[TorchOrtFactory] graph_builder_config.graph_transformer_config=%s",
-                        TorchOrtFactory._repr_helper_(
-                            self.graph_builder_config.graph_transformer_config, indent=4))
-            logger.info("[TorchOrtFactory] graph_builder_config.graph_transformer_config.propagate_cast_ops_config=%s",
-                        TorchOrtFactory._repr_helper_(
-                            self.graph_builder_config.graph_transformer_config.propagate_cast_ops_config, indent=4))
+            logger.info("[TorchOrtFactory] graph_builder_config."
+                        "graph_transformer_config=%s",
+                        TorchOrtFactory._repr_helper_(cf, indent=4))
+            logger.info("[TorchOrtFactory] graph_builder_config."
+                        "graph_transformer_config.propagate_cast_ops_config=%s",
+                        TorchOrtFactory._repr_helper_(cfp, indent=4))
 
         builder.initialize(
             self.onnx_model.SerializeToString(),
