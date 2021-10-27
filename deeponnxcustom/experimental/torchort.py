@@ -374,15 +374,18 @@ class TorchOrtFactory:
             cf = self.graph_builder_config.graph_transformer_config
             cfp = cf.propagate_cast_ops_config
             logger.info("[TorchOrtFactory] OrtModuleGraphBuilder.initialize")
-            logger.info("[TorchOrtFactory] graph_builder_config=%s",
-                        TorchOrtFactory._repr_helper_(
-                            self.graph_builder_config, indent=4))
-            logger.info("[TorchOrtFactory] graph_builder_config."
-                        "graph_transformer_config=%s",
-                        TorchOrtFactory._repr_helper_(cf, indent=4))
-            logger.info("[TorchOrtFactory] graph_builder_config."
-                        "graph_transformer_config.propagate_cast_ops_config=%s",
-                        TorchOrtFactory._repr_helper_(cfp, indent=4))
+            logger.info(
+                "[TorchOrtFactory] graph_builder_config=%s",
+                TorchOrtFactory._repr_helper_(
+                    self.graph_builder_config, indent=4))
+            logger.info(
+                "[TorchOrtFactory] graph_builder_config."
+                "graph_transformer_config=%s",
+                TorchOrtFactory._repr_helper_(cf, indent=4))
+            logger.info(
+                "[TorchOrtFactory] graph_builder_config."
+                "graph_transformer_config.propagate_cast_ops_config=%s",
+                TorchOrtFactory._repr_helper_(cfp, indent=4))
 
         builder.initialize(
             self.onnx_model.SerializeToString(),
