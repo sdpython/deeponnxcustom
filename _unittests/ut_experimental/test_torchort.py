@@ -1,7 +1,7 @@
 """
 @brief      test log(time=3s)
 """
-
+import logging
 import unittest
 from pyquickhelper.pycode import ExtTestCase
 import numpy
@@ -49,9 +49,8 @@ class TestTorchOrt(ExtTestCase):
         weights = ['Ma_MatMulcst', 'Ma_MatMulcst1']
         return onx, weights
 
-
     @staticmethod
-    def _check_(cls, device, dtype, x, y, H, requires_grad):
+    def _check_(cls, device, dtype, x, y, H, requires_grad):  # pylint: disable=W0211
         # Create random Tensors for weights.
         D_in = x.shape[1]
         D_out = y.shape[1]
@@ -74,7 +73,19 @@ class TestTorchOrt(ExtTestCase):
                         "Discrepancies %r: %r != %r." % (diff, y1, y2))
 
     @staticmethod
-    def _check_gradient_(cls, device, dtype, x, y, H):
+    def _assert_grad_almost_equal(a, b, decimal=4):
+        if a.grad is None:
+            raise AssertionError("a.grad is None")
+        if b.grad is None:
+            raise AssertionError("b.grad is None")
+        diff = (a.grad - b.grad).abs().sum()
+        if diff > 0.1 ** decimal:
+            raise AssertionError(
+                "Discrepancies %r: %r != %r." % (diff, a.grad, b.grad))
+
+    @staticmethod
+    def _check_gradient_(cls, device, dtype, x, y, H,  # pylint: disable=W0211
+                         learning_rate=1e-6):
         D_in = x.shape[1]
         D_out = y.shape[1]
         # Create random Tensors for weights.
@@ -82,8 +93,10 @@ class TestTorchOrt(ExtTestCase):
                          dtype=dtype, requires_grad=True)
         w2 = torch.randn(H, D_out, device=device,  # pylint: disable=E1101
                          dtype=dtype, requires_grad=True)
-        w1c = torch.clone(w1.detach()).requires_grad_(True)
-        w2c = torch.clone(w2.detach()).requires_grad_(True)
+        w1c = torch.clone(  # pylint: disable=E1101
+            w1.detach()).requires_grad_(True)
+        w2c = torch.clone(  # pylint: disable=E1101
+            w2.detach()).requires_grad_(True)
 
         if cls == TestTorchOrt.MyReLUAdd:
             y_pred = cls.apply(x.mm(w1)).mm(w2)
@@ -98,23 +111,10 @@ class TestTorchOrt(ExtTestCase):
             loss = (y_pred - y).pow(2).sum()
             loss.backward()
 
-            if w1.grad is None or w2.grad is None:
-                raise AssertionError("No gradient for cls=%r." % cls)
-            if w1c.grad is None or w2c.grad is None:
-                raise AssertionError("No gradient for cls=%r." % MyReLUAdd)
-                
-            diff = (w1.grad - w1c.grad).abs().sum()
-            if diff > 1e-4:
-                raise AssertionError(
-                    "Discrepancies %r: %r != %r." % (diff, w1.grad, w1c.grad))
+            TestTorchOrt._assert_grad_almost_equal(w1, w1c)
+            TestTorchOrt._assert_grad_almost_equal(w2, w2c)
 
-            diff = (w2.grad - w2c.grad).abs().sum()
-            if diff > 1e-4:
-                raise AssertionError(
-                    "Discrepancies %r: %r != %r." % (diff, w2.grad, w2c.grad))
-
-    @unittest.skipIf(TrainingSession is None, reason="not training")
-    def test_gradient(self):
+    def common_gradient(self):
         dtype = torch.float  # pylint: disable=E1101
         device = torch.device("cpu")  # pylint: disable=E1101
 
@@ -126,11 +126,12 @@ class TestTorchOrt(ExtTestCase):
         y = torch.randn(N, D_out, device=device,  # pylint: disable=E1101
                         dtype=dtype)
 
-        TestTorchOrt._check_(TestTorchOrt.MyReLUAdd, device, dtype, x, y, H, False)
-        TestTorchOrt._check_(TestTorchOrt.MyReLUAdd, device, dtype, x, y, H, True)
-        TestTorchOrt._check_gradient_(TestTorchOrt.MyReLUAdd, device, dtype, x, y, H)
-        
-        # onnxruntime
+        TestTorchOrt._check_(TestTorchOrt.MyReLUAdd,
+                             device, dtype, x, y, H, False)
+        TestTorchOrt._check_(TestTorchOrt.MyReLUAdd,
+                             device, dtype, x, y, H, True)
+        TestTorchOrt._check_gradient_(
+            TestTorchOrt.MyReLUAdd, device, dtype, x, y, H)
 
         onx, weights = TestTorchOrt.MyReLUAdd_onnx(N, D_in, H, D_out)
         fact = TorchOrtFactory(onx, weights)
@@ -139,6 +140,52 @@ class TestTorchOrt(ExtTestCase):
         TestTorchOrt._check_(cls, device, dtype, x, y, H, False)
         TestTorchOrt._check_(cls, device, dtype, x, y, H, True)
         TestTorchOrt._check_gradient_(cls, device, dtype, x, y, H)
+
+    @unittest.skipIf(TrainingSession is None, reason="not training")
+    def test_gradient(self):
+        self.common_gradient()
+
+    @unittest.skipIf(TrainingSession is None, reason="not training")
+    def test_gradient_logging(self):
+        logger = logging.getLogger('deeponnxcustom')
+        logger.setLevel(logging.DEBUG)
+        _, logs = self.assertLogging(
+            self.common_gradient, 'deeponnxcustom', level=logging.DEBUG)
+        self.assertIn("create InferenceSession", logs)
+        logger.setLevel(logging.WARNING)
+
+    @staticmethod
+    def _check_gradient_iter_(N, cls, device, dtype,  # pylint: disable=W0211
+                              x, y, H, learning_rate=1e-6, decimal=4):
+        D_in = x.shape[1]
+        D_out = y.shape[1]
+        # Create random Tensors for weights.
+        w1 = torch.randn(D_in, H, device=device,  # pylint: disable=E1101
+                         dtype=dtype, requires_grad=True)
+        w2 = torch.randn(H, D_out, device=device,  # pylint: disable=E1101
+                         dtype=dtype, requires_grad=True)
+        w1c = torch.clone(  # pylint: disable=E1101
+            w1.detach()).requires_grad_(True)
+        w2c = torch.clone(  # pylint: disable=E1101
+            w2.detach()).requires_grad_(True)
+
+        for _ in range(N):
+            y_predc = TestTorchOrt.MyReLUAdd.apply(x.mm(w1c)).mm(w2c)
+            lossc = (y_predc - y).pow(2).sum()
+            lossc.backward()
+
+            y_pred = cls.apply(x, w1, w2)
+            loss = (y_pred - y).pow(2).sum()
+            loss.backward()
+
+            TestTorchOrt._assert_grad_almost_equal(w1, w1c, decimal=decimal)
+            TestTorchOrt._assert_grad_almost_equal(w2, w2c, decimal=decimal)
+
+            with torch.no_grad():
+                w1 -= learning_rate * w1.grad
+                w2 -= learning_rate * w2.grad
+                w1c -= learning_rate * w1c.grad
+                w2c -= learning_rate * w2c.grad
 
     @unittest.skipIf(TrainingSession is None, reason="not training")
     def test_gradient_one_iteration(self):
@@ -152,18 +199,19 @@ class TestTorchOrt(ExtTestCase):
         y = torch.randn(N, D_out, device=device,  # pylint: disable=E1101
                         dtype=dtype)
 
-        # onnxruntime
-
         onx, weights = TestTorchOrt.MyReLUAdd_onnx(N, D_in, H, D_out)
         fact = TorchOrtFactory(onx, weights)
         cls = fact.create_class(enable_logging=True)
-
-        TestTorchOrt._check_(cls, device, dtype, x, y, H, False)
-        TestTorchOrt._check_(cls, device, dtype, x, y, H, True)
-        TestTorchOrt._check_gradient_(cls, device, dtype, x, y, H)
+        TestTorchOrt._check_gradient_iter_(
+            2, cls, device, dtype, x, y, H, learning_rate=1e-4)
+        TestTorchOrt._check_gradient_iter_(
+            3, cls, device, dtype, x, y, H, learning_rate=1e-4, decimal=3)
+        TestTorchOrt._check_gradient_iter_(
+            4, cls, device, dtype, x, y, H, learning_rate=1e-4, decimal=3)
 
     @staticmethod
-    def run_cls(cls, device, dtype, x, y, H):
+    def run_cls(cls, device, dtype, x, y, H,  # pylint: disable=W0211
+                learning_rate=1e-6):
         D_in = x.shape[1]
         D_out = y.shape[1]
         # Create random Tensors for weights.
@@ -173,7 +221,6 @@ class TestTorchOrt(ExtTestCase):
                          dtype=dtype, requires_grad=True)
 
         all_losses = []
-        learning_rate = 1e-6
         for t in range(500):
             # forward - backward
             if cls == TestTorchOrt.MyReLUAdd:
@@ -184,12 +231,11 @@ class TestTorchOrt(ExtTestCase):
                 y_pred = cls.apply(x, w1, w2)
                 loss = (y_pred - y).pow(2).sum()
                 loss.backward()
-                
+
             # update weights
             with torch.no_grad():
                 w1 -= learning_rate * w1.grad
                 w2 -= learning_rate * w2.grad
-                # Manually zero the gradients after updating weights
                 w1.grad.zero_()
                 w2.grad.zero_()
             all_losses.append((t, loss.detach().numpy()))
@@ -200,7 +246,6 @@ class TestTorchOrt(ExtTestCase):
         dtype = torch.float  # pylint: disable=E1101
         device = torch.device("cpu")  # pylint: disable=E1101
 
-        
         # Create random Tensors to hold input and outputs.
         N, D_in, H, D_out = 4, 5, 3, 2
         x = torch.randn(N, D_in, device=device,  # pylint: disable=E1101
@@ -208,19 +253,25 @@ class TestTorchOrt(ExtTestCase):
         y = torch.randn(N, D_out, device=device,  # pylint: disable=E1101
                         dtype=dtype)
 
-        all_losses, w1, w2 = TestTorchOrt.run_cls(
-            TestTorchOrt.MyReLUAdd, device, dtype, x, y, H)
-        print("TCH", all_losses[-1], w1.shape, w1.sum(), w2.shape, w2.sum())
-        
+        lr = 1e-5
+        all_losses, _, __ = TestTorchOrt.run_cls(
+            TestTorchOrt.MyReLUAdd, device, dtype, x, y, H,
+            learning_rate=lr)
+        # print("TCH", all_losses[0], all_losses[-1], w1.shape,
+        #       w1.sum(), w2.shape, w2.sum())
+        self.assertGreater(all_losses[0][1], all_losses[-1][1])
+
         # onnxruntime
 
         onx, weights = TestTorchOrt.MyReLUAdd_onnx(N, D_in, H, D_out)
         fact = TorchOrtFactory(onx, weights)
         cls = fact.create_class(enable_logging=True)
 
-        all_losses2, w12, w22 = TestTorchOrt.run_cls(cls, device, dtype, x, y, H)
-        print("ORT", all_losses2[-1], w12.shape,
-              w12.sum(), w22.shape, w22.sum())
+        all_losses2, _, __ = TestTorchOrt.run_cls(
+            cls, device, dtype, x, y, H, learning_rate=lr)
+        # print("ORT", all_losses2[0], all_losses2[-1], w12.shape,
+        #       w12.sum(), w22.shape, w22.sum())
+        self.assertGreater(all_losses2[0][1], all_losses2[-1][1])
 
 
 if __name__ == "__main__":

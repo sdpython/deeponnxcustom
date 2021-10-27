@@ -4,20 +4,17 @@
 """
 import logging
 from textwrap import dedent
+from io import BytesIO
+import onnx
 from onnxruntime import InferenceSession
 from onnxruntime.capi._pybind_state import (  # pylint: disable=E0611
     TrainingAgent, OrtValueCache, OrtModuleGraphBuilder,
     OrtModuleGraphBuilderConfiguration, OrtDevice,
     TrainingGraphTransformerConfiguration, OrtValueVector,
     PartialGraphExecutionState)
-# requires eager mode
-# from onnxruntime.capi._pybind_state import (  # pylint: disable=E0611
-#     ort_from_dlpack, ort_to_dlpack)
-from onnxruntime.capi.onnxruntime_inference_collection import (
-    get_ort_device_type)
-from onnxruntime.capi._pybind_state import SessionIOBinding
-from onnxruntime import OrtValue, RunOptions
-from torch import from_numpy, is_grad_enabled  # pylint: disable=E0611
+from onnxruntime.capi._pybind_state import SessionIOBinding  # pylint: disable=E0611
+from onnxruntime import RunOptions
+from torch import is_grad_enabled  # pylint: disable=E0611
 from torch.autograd import Function
 from torch.utils.dlpack import from_dlpack, to_dlpack
 
@@ -48,7 +45,7 @@ def ort_forward(ctx, *inputs):
     cls = ctx._forward_cls
     logger = cls._logger
     training = is_grad_enabled() or any(ctx.needs_input_grad)
-    
+
     def _log(msg):
         logger.debug("[%s.forward] (%dI) %s" % (
             cls.__name__, len(inputs), msg))
@@ -96,7 +93,8 @@ def ort_forward(ctx, *inputs):
             if len(forward_outputs) == 1:
                 res = cls.from_ort_to_torch(forward_outputs[0])
             else:
-                res = tuple(cls.from_ort_to_torch(ov) for ov in forward_outputs)
+                res = tuple(cls.from_ort_to_torch(ov)
+                            for ov in forward_outputs)
             if logger is not None:
                 _log("end")
             return res
@@ -125,7 +123,7 @@ def ort_forward(ctx, *inputs):
         #    output_desc.name, torch_tensor.device.type, _utils.get_device_index(target_device),
         #    _utils.dtype_torch_to_numpy(torch_tensor.dtype),
         #    list(torch_tensor.size()), torch_tensor.data_ptr())
-        
+
         if logger is not None:
             _log("grad_enabled=False (run_with_iobinding)")
         cls._sess_eval._sess.run_with_iobinding(iobinding, cls._run_options)
@@ -320,19 +318,19 @@ class TorchOrtFactory:
         backward methods using ONNX. The function dynamically
         creates a new class and pushes every needed objects
         as static attributes of the new class.
-        
+
         :param enable_logging: used to debug, logs every building step,
             at info level, logs information while processing forward
             and backward at debug level
         :param keep_models: stores additional information as
             static attributes
-        :return: a new class    
+        :return: a new class
 
         The pattern follows the documentation described in
         :epkg:`autograd functions`. Methods forward and backward
         are replaced by onnx implementations, runtime is
         :epkg:`onnxruntime-training`.
-    
+
         ::
 
             class CustomClass(torch.autograd.Function):
@@ -371,14 +369,14 @@ class TorchOrtFactory:
         if logger is not None:
             logger.info("[TorchOrtFactory] OrtModuleGraphBuilder.initialize")
             logger.info("[TorchOrtFactory] graph_builder_config=%s",
-                TorchOrtFactory._repr_helper_(
-                    self.graph_builder_config, indent=4))
+                        TorchOrtFactory._repr_helper_(
+                            self.graph_builder_config, indent=4))
             logger.info("[TorchOrtFactory] graph_builder_config.graph_transformer_config=%s",
-                TorchOrtFactory._repr_helper_(
-                    self.graph_builder_config.graph_transformer_config, indent=4))
+                        TorchOrtFactory._repr_helper_(
+                            self.graph_builder_config.graph_transformer_config, indent=4))
             logger.info("[TorchOrtFactory] graph_builder_config.graph_transformer_config.propagate_cast_ops_config=%s",
-                TorchOrtFactory._repr_helper_(
-                    self.graph_builder_config.graph_transformer_config.propagate_cast_ops_config, indent=4))
+                        TorchOrtFactory._repr_helper_(
+                            self.graph_builder_config.graph_transformer_config.propagate_cast_ops_config, indent=4))
 
         builder.initialize(
             self.onnx_model.SerializeToString(),
@@ -398,13 +396,13 @@ class TorchOrtFactory:
 
         if logger is not None:
             logger.info("[TorchOrtFactory] graph_info=%s",
-                TorchOrtFactory._repr_helper_(
-                    graph_info, indent=4))
+                        TorchOrtFactory._repr_helper_(
+                            graph_info, indent=4))
             logger.info("[TorchOrtFactory] create TrainSession")
             logger.info("[TorchOrtFactory] sess_options=%s",
-                TorchOrtFactory._repr_helper_(
-                    self.sess_options, indent=4))
-            logger.info("[TorchOrtFactory] providers=%r", self.providers)            
+                        TorchOrtFactory._repr_helper_(
+                            self.sess_options, indent=4))
+            logger.info("[TorchOrtFactory] providers=%r", self.providers)
 
         sess = InferenceSession(
             train_onnx_model_serialized,
@@ -426,7 +424,7 @@ class TorchOrtFactory:
 
         grad_input_names = [obj.name for obj in sess.get_inputs()]
         bw_fetches_names = [obj.name for obj in sess.get_outputs()]
-        
+
         fw_outputs_device_info = [
             OrtDevice(
                 TorchOrtFactory._provider_name_to_device_type(i),
@@ -499,7 +497,8 @@ class TorchOrtFactory:
         if keep_models:
             kwargs.update(dict(
                 _trained_onnx=onnx.load(BytesIO(train_onnx_model_serialized)),
-                _optimized_pre_grad_model=onnx.load(BytesIO(optimized_pre_grad_model)),
+                _optimized_pre_grad_model=onnx.load(
+                    BytesIO(optimized_pre_grad_model)),
                 _graph_builder=builder,
                 _factory=self))
 

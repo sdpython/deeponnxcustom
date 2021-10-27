@@ -66,7 +66,7 @@ latex_elements['preamble'] += custom_preamble
 intersphinx_mapping.update({
     'torch': ('https://pytorch.org/docs/stable/', None),
     'pandas_streaming':
-        ('http://www.xavierdupre.fr/app/pyquickhelper/helpsphinx/', None),    
+        ('http://www.xavierdupre.fr/app/pyquickhelper/helpsphinx/', None),
 )}
 
 epkg_dictionary.update({
