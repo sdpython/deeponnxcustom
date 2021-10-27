@@ -6,7 +6,7 @@ import unittest
 from pyquickhelper.pycode import ExtTestCase
 import numpy
 from skl2onnx.common.data_types import FloatTensorType
-from skl2onnx.algebra.onnx_ops import OnnxRelu
+from skl2onnx.algebra.onnx_ops import OnnxRelu, OnnxMatMul
 from deeponnxcustom.experimental.torchort import TorchOrtFactory
 try:
     from onnxruntime import TrainingSession
@@ -22,7 +22,7 @@ class TestTorchOrt(ExtTestCase):
     @unittest.skipIf(TrainingSession is None, reason="not training")
     def test_simple(self):
         
-        class MyReLU(Function):
+        class MyReLUAdd(Function):
             @staticmethod
             def forward(ctx, input):
                 ctx.save_for_backward(input)
@@ -33,12 +33,12 @@ class TestTorchOrt(ExtTestCase):
                 input, = ctx.saved_tensors
                 grad_input = grad_output.clone()
                 grad_input[input < 0] = 0
-                return grad_input        
+                return grad_input
 
         dtype = torch.float
         device = torch.device("cpu")
 
-        N, D_in, H, D_out = 64, 1000, 100, 10
+        N, D_in, H, D_out = 4, 5, 3, 2
 
         # Create random Tensors to hold input and outputs.
         x = torch.randn(N, D_in, device=device, dtype=dtype)
@@ -74,14 +74,23 @@ class TestTorchOrt(ExtTestCase):
 
             return all_losses, w1, w2
         
-        all_losses, w1, w2 = run_cls(MyReLU, x, y)
+        all_losses, w1, w2 = run_cls(MyReLUAdd, x, y)
         print("Torch", all_losses[-1], w1.shape, w1.sum(), w2.shape, w2.sum())
         
-        var = [('X', FloatTensorType())]
-        onx = OnnxRelu(*var, op_version=14, output_names=['Y']).to_onnx(
-            var, target_opset=14, outputs=[('Y', FloatTensorType())])
-        weights = ['X']
-        
+        var = [('X', FloatTensorType([N, D_in]))]
+        w1 = numpy.random.randn(D_in, H).astype(numpy.float32)
+        w2 = numpy.random.randn(H, D_out).astype(numpy.float32)
+        opv = 14
+        onx_alg = OnnxMatMul(
+            OnnxRelu(OnnxMatMul(*var, w1, op_version=opv),
+                     op_version=opv),
+            w2, op_version=opv, output_names=['Y'])
+        onx = onx_alg.to_onnx(
+            var, target_opset=opv, outputs=[('Y', FloatTensorType())])
+        with open("model_ooo.onnx", "wb") as f:
+            f.write(onx.SerializeToString())
+
+        weights = ['Ma_MatMulcst', 'Ma_MatMulcst1']        
         fact = TorchOrtFactory(onx, weights)
         cls = fact.create_class(enable_logging=True)
         

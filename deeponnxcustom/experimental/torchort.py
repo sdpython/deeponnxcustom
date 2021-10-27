@@ -6,8 +6,10 @@ import logging
 from textwrap import dedent
 from onnxruntime import TrainingSession
 from onnxruntime.capi._pybind_state import (
-    TrainingAgent, OrtValueCache, PartialGraphExecutionState,
-    TrainingParameters, RunOptions)
+    TrainingAgent, OrtValueCache, OrtModuleGraphBuilder,
+    OrtModuleGraphBuilderConfiguration,
+    TrainingGraphTransformerConfiguration,
+    PartialGraphExecutionState, TrainingParameters, RunOptions)
 from torch import from_numpy, is_grad_enabled
 from torch.autograd import Function
 from torch.utils.dlpack import from_dlpack, to_dlpack
@@ -138,17 +140,19 @@ class TorchOrtFactory:
     :param input_names: input names or None for all
     :param output_names: output names or None for all
     :param class_name: class name
-    :param sess_options: see :epkg:`TrainingSession`
+    :param sess_options: see :epkg:`SessionOptions`
     :param providers: see :epkg:`TrainingSession`
     :param provider_options: see :epkg:`TrainingSession`
-    :param run_options: see :epkg:`TrainingSession`
+    :param run_options: see :epkg:`RunOptions`
+    :param graph_builder_config: see :epkg:`OrtModuleGraphBuilderConfiguration`
     """
     
     def __init__(self, onnx_model, weights_to_train,
                  input_names=None, output_names=None,
                  class_name=None, training_parameters=None,
                  sess_options=None, providers=None,
-                 provider_options=None, run_options=None):
+                 provider_options=None, run_options=None,
+                 graph_builder_config=None):
         self.onnx_model = onnx_model
         self.input_names = input_names
         self.output_names = output_names
@@ -164,6 +168,7 @@ class TorchOrtFactory:
         self.sess_options = sess_options
         self.providers = providers
         self.run_options = run_options
+        self.graph_builder_config = graph_builder_config
 
         # default
         if self.input_names is None:
@@ -181,6 +186,26 @@ class TorchOrtFactory:
         if self.run_options is None:
             self.run_options = RunOptions()
             self.run_options.training_mode = True
+        
+        if self.graph_builder_config is None:
+            initializer_names = [i.name for i in self.onnx_model.graph.initializer]
+            input_names = [i.name for i in self.onnx_model.graph.input]
+            
+            config = OrtModuleGraphBuilderConfiguration()
+            config.initializer_names = initializer_names
+            config.initializer_names_to_train = list(
+                sorted(self.training_parameters.weights_to_train))
+            config.input_names_require_grad = input_names
+            config.build_gradient_graph = True
+            
+            p = TrainingGraphTransformerConfiguration()
+            config.graph_transformer_config = p
+
+            # config.enable_caching = True
+            # config.loglevel = 
+            # config.use_memory_efficient_gradient = True
+            self.graph_builder_config = config
+            
     
     def __repr__(self):
         "usual"
@@ -214,12 +239,25 @@ class TorchOrtFactory:
                         in a pytorch function.""")
         
         if logger is not None:
-            logger.info("[TorchOrtFactory] create training session")
+            logger.info("[TorchOrtFactory] create training onnx")
             logger.info("[TorchOrtFactory] input_names=%r" % self.input_names)
             logger.info("[TorchOrtFactory] output_names=%r" % self.output_names)
             logger.info("[TorchOrtFactory] weights_to_train=%r" % self.training_parameters.weights_to_train)
-        sess = TrainingSession(
+            
+        builder = OrtModuleGraphBuilder()
+        if logger is not None:
+            logger.info("[TorchOrtFactory] OrtModuleGraphBuilder.initialize")
+        builder.initialize(
             self.onnx_model.SerializeToString(),
+            self.graph_builder_config)
+        if logger is not None:
+            logger.info("[TorchOrtFactory] OrtModuleGraphBuilder.get_model")
+        train_onnx_model = builder.get_model()
+            
+        if logger is not None:
+            logger.info("[TorchOrtFactory] create TrainSession")
+        sess = TrainingSession(
+            train_onnx_model.SerializeToString(),
             parameters=self.training_parameters,
             provider_options=self.provider_options,
             sess_options=self.sess_options,
