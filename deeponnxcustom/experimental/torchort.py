@@ -7,9 +7,15 @@ from textwrap import dedent
 from onnxruntime import InferenceSession
 from onnxruntime.capi._pybind_state import (  # pylint: disable=E0611
     TrainingAgent, OrtValueCache, OrtModuleGraphBuilder,
-    OrtModuleGraphBuilderConfiguration,
+    OrtModuleGraphBuilderConfiguration, OrtDevice,
     TrainingGraphTransformerConfiguration, OrtValueVector,
     PartialGraphExecutionState)
+# requires eager mode
+# from onnxruntime.capi._pybind_state import (  # pylint: disable=E0611
+#     ort_from_dlpack, ort_to_dlpack)
+from onnxruntime.capi.onnxruntime_inference_collection import (
+    get_ort_device_type)
+from onnxruntime.capi._pybind_state import SessionIOBinding
 from onnxruntime import OrtValue, RunOptions
 from torch import from_numpy, is_grad_enabled  # pylint: disable=E0611
 from torch.autograd import Function
@@ -22,43 +28,54 @@ class TorchOrtFunction(Function):
     """
 
     @staticmethod
-    def form_ort_to_torch(ort_value):
-        "Converts a vector from OvtValue to pytorch."
+    def append_to_ort_value_vector_as_ort_value(vector, tor_value):
+        "Converts a vector from pytorch to OrtValue."
+        packed = to_dlpack(tor_value)
+        vector.push_back(packed, False)
+
+    @staticmethod
+    def from_ort_to_torch(ort_value):
+        "Converts a vector from OrtValue to pytorch."
         packed = ort_value.to_dlpack()
         return from_dlpack(packed)
 
 
-def ort_forward(cls, ctx, *inputs):
+def ort_forward(ctx, *inputs):
     """
     Implements forward function.
     See :epkg:`autograd functions`.
     """
+    cls = ctx._forward_cls
+    logger = cls._logger
+    training = is_grad_enabled() or any(ctx.needs_input_grad)
+    
     def _log(msg):
-        logger.debug("[%s.forward] (%d inputs) %s" % (
+        logger.debug("[%s.forward] (%dI) %s" % (
             cls.__name__, len(inputs), msg))
 
-    logger = cls._logger
     if logger is not None:
-        _log("conversion to dlpack")
-    packed = [inp.to_dlpack() for inp in inputs]
+        if training:
+            _log("begin with gradient")
+        else:
+            _log("begin")
+        _log("%r - %r" % (type(ctx), type(cls)))
+        _log("create OrtValueVector (through dlpack)")
 
-    if logger is not None:
-        _log("create OrtValueVector")
     forward_inputs = OrtValueVector()
     forward_inputs.reserve(len(inputs))
-    for i in packed:
-        forward_inputs.push_back(i)
+    for i in inputs:
+        cls.append_to_ort_value_vector_as_ort_value(forward_inputs, i)
 
-    if is_grad_enabled():
-        if logger is not None:
-            _log("grad_enabled=True")
+    if training:
         forward_outputs = OrtValueVector()
         state = PartialGraphExecutionState()
-        cls._state.append(state)
+        cls._states.append(state)
         if logger is not None:
             _log("run_forward")
         cls._training_agent.run_forward(
             forward_inputs, forward_outputs, state, cls._cache)
+
+        ctx.save_for_backward(*inputs)
 
         if cls._update_cache:
             if logger is not None:
@@ -76,57 +93,104 @@ def ort_forward(cls, ctx, *inputs):
         else:
             if logger is not None:
                 _log("to torck.tensor")
-            res = tuple(cls.from_ort_to_torch(ov) for ov in forward_outputs)
+            if len(forward_outputs) == 1:
+                res = cls.from_ort_to_torch(forward_outputs[0])
+            else:
+                res = tuple(cls.from_ort_to_torch(ov) for ov in forward_outputs)
             if logger is not None:
                 _log("end")
             return res
     else:
+        # what about bind_input (+ data_ptr)
+        if len(forward_inputs) != len(cls._grad_input_names):
+            raise RuntimeError(
+                "Size mismatch len(inputs)=%d, len(onnx inputs)=%d." % (
+                    len(forward_inputs), len(cls._grad_input_names)))
+        iobinding = SessionIOBinding(cls._sess_eval._sess)
+        if logger is not None:
+            _log("bind inputs %r" % cls._grad_input_names)
+        for name, inp in zip(
+                cls._grad_input_names, forward_inputs):
+            iobinding.bind_ortvalue_input(name, inp)
+
+        # bind output
+        if logger is not None:
+            _log("bind outputs %r" % cls._output_names)
+        for name, dev in zip(
+                cls._output_names, cls._fw_no_grad_output_device_info):
+            iobinding.bind_output(name, dev)
+
+        # if the shape is known in advance
+        # iobinding.bind_output(
+        #    output_desc.name, torch_tensor.device.type, _utils.get_device_index(target_device),
+        #    _utils.dtype_torch_to_numpy(torch_tensor.dtype),
+        #    list(torch_tensor.size()), torch_tensor.data_ptr())
+        
         if logger is not None:
             _log("grad_enabled=False (run_with_iobinding)")
-        cls._sess.run_with_iobinding(iobinding, cls._run_options)
+        cls._sess_eval._sess.run_with_iobinding(iobinding, cls._run_options)
         if logger is not None:
             _log("get_outputs")
         ortvalues = iobinding.get_outputs()
         if logger is not None:
             _log("to torck.tensor")
-        res = tuple(cls.from_ort_to_torch(ov) for ov in ortvalues)
+        if len(ortvalues) == 1:
+            res = cls.from_ort_to_torch(ortvalues[0])
+        else:
+            res = tuple(cls.from_ort_to_torch(ov) for ov in ortvalues)
         if logger is not None:
             _log("end")
         return res
 
 
-def ort_backward(cls, ctx, *grad_outputs):
+def ort_backward(ctx, *grad_outputs):
     """
     Implements backward function.
     See :epkg:`autograd functions`.
     """
-    def _log(msg):
-        logger.debug("[%s.backward] (%d inputs) %s" % (
-            cls.__name__, len(inputs), msg))
-
+    cls = ctx._forward_cls
     logger = cls._logger
+
+    def _log(msg):
+        logger.debug("[%s.backward] (%dI) %s" % (
+            cls.__name__, len(grad_outputs), msg))
+
     if logger is not None:
+        _log("begin")
+        _log("%r - %r" % (type(ctx), type(cls)))
         _log("saved_tensors")
-    inputs, = ctx.saved_tensors
+
+    inputs = ctx.saved_tensors
     if logger is not None:
         _log("cls._state.pop()")
-    state = cls._state.pop()
+    state = cls._states.pop()
 
     if logger is not None:
-        _log("create OrtValueVector")
+        _log("create OrtValueVector (through dlpack)")
+
     backward_inputs = OrtValueVector()
     backward_inputs.reserve(len(inputs))
-    for i in grad_outputs:
-        if grad_output is None:
-            raise NotImplementedError()
+    for i, grad in enumerate(grad_outputs):
+        if grad is None:
             # grad_output = torch.zeros(shape, device=device, dtype=dtype)
-        backward_inputs.push_back(i.to_dlpack())
+            raise NotImplementedError(
+                "Empty gradient for output %d." % i)
+        if not grad.is_contiguous():
+            # grad = grad.contiguous()
+            raise NotImplementedError(
+                "Non contiguous gradient for output %d." % i)
+        cls.append_to_ort_value_vector_as_ort_value(backward_inputs, grad)
 
     backward_outputs = OrtValueVector()
     if logger is not None:
         _log("run_backward")
     cls._training_agent.run_backward(backward_inputs, backward_outputs, state)
-    res = tuple(cls.from_ort_to_torch(ov) for ov in backward_outputs)
+    if len(backward_outputs) == 1:
+        res = cls.from_ort_to_torch(backward_outputs[0])
+    else:
+        res = tuple(cls.from_ort_to_torch(ov) for ov in backward_outputs)
+        if logger is not None:
+            _log("got %r gradients" % len(res))
     if logger is not None:
         _log("end")
     return res
@@ -148,6 +212,8 @@ class TorchOrtFactory:
     :param provider_options: see :epkg:`TrainingSession`
     :param run_options: see :epkg:`RunOptions`
     :param graph_builder_config: see :epkg:`OrtModuleGraphBuilderConfiguration`
+    :param device_index: used for cuda (0 for `cuda:0`,
+        `cuda:1`, ...), 0 by default
     """
 
     def __init__(self, onnx_model, weights_to_train,
@@ -155,12 +221,14 @@ class TorchOrtFactory:
                  class_name=None,
                  sess_options=None, providers=None,
                  provider_options=None, run_options=None,
-                 graph_builder_config=None):
+                 graph_builder_config=None,
+                 device_index=0):
         self.onnx_model = onnx_model
         self.input_names = input_names
         self.output_names = output_names
         self.class_name = class_name
         self.weights_to_train = weights_to_train
+        self.device_index = device_index
 
         self.provider_options = provider_options
         self.sess_options = sess_options
@@ -178,12 +246,19 @@ class TorchOrtFactory:
         if self.class_name is None:
             self.class_name = "TorchOrtFunction_%r" % id(self)
         if self.providers in (None, 'cpu'):
-            self.providers = ["CPUExecutionProvider"]
+            self.providers = ["CPUExecutionProvider" for i in self.input_names]
             if self.provider_options is None:
-                self.provider_options = [{}]
+                self.provider_options = [{} for i in self.input_names]
         if self.run_options is None:
             self.run_options = RunOptions()
             self.run_options.training_mode = True
+
+        if len(self.input_names) != len(self.providers):
+            raise ValueError(
+                "input_names and providers must have the same length.")
+        if len(self.input_names) != len(self.provider_options):
+            raise ValueError(
+                "input_names and provider_options must have the same length.")
 
         if self.graph_builder_config is None:
             initializer_names = [
@@ -229,6 +304,14 @@ class TorchOrtFactory:
         return "%s(\n    %s)" % (
             obj.__class__.__name__,
             "\n    ".join(rows))
+
+    @staticmethod
+    def _provider_name_to_device_type(provider_name):
+        if provider_name == 'CPUExecutionProvider':
+            return OrtDevice.cpu()
+        if provider_name == 'GPUExecutionProvider':
+            return OrtDevice.cuda()
+        raise ValueError('Unexpected provider name %r.' % provider_name)
 
     def create_class(self, enable_logging=False, keep_models=False):
         """
@@ -309,12 +392,8 @@ class TorchOrtFactory:
             logger.info("[TorchOrtFactory] OrtModuleGraphBuilder.get_model")
 
         train_onnx_model_serialized = builder.get_model()
-        with open("debug.onnx", "wb") as f:
-            f.write(train_onnx_model_serialized)
 
         optimized_pre_grad_model = builder.get_inference_optimized_model()
-        with open("debug2.onnx", "wb") as f:
-            f.write(optimized_pre_grad_model)
         graph_info = builder.get_graph_info()
 
         if logger is not None:
@@ -334,10 +413,44 @@ class TorchOrtFactory:
             providers=self.providers)
 
         if logger is not None:
+            logger.info("[TorchOrtFactory] create InferenceSession")
+
+        sess_eval = InferenceSession(
+            optimized_pre_grad_model,
+            sess_options=self.sess_options,
+            provider_options=self.provider_options,
+            providers=self.providers)
+
+        if logger is not None:
             logger.info("[TorchOrtFactory] create training agent")
+
+        grad_input_names = [obj.name for obj in sess.get_inputs()]
+        bw_fetches_names = [obj.name for obj in sess.get_outputs()]
+        
+        fw_outputs_device_info = [
+            OrtDevice(
+                TorchOrtFactory._provider_name_to_device_type(i),
+                OrtDevice.default_memory(),
+                self.device_index)
+            for i in self.providers]
+        bw_outputs_device_info = [
+            OrtDevice(
+                TorchOrtFactory._provider_name_to_device_type(
+                    self.providers[0]),
+                OrtDevice.default_memory(),
+                self.device_index)
+            for i in bw_fetches_names]
+        fw_no_grad_output_device_info = [
+            OrtDevice(
+                TorchOrtFactory._provider_name_to_device_type(
+                    self.providers[0]),
+                OrtDevice.default_memory(),
+                self.device_index)
+            for i in self.output_names]
+
         training_agent = TrainingAgent(
-            sess,
-            self.input_names,
+            sess._sess,
+            grad_input_names,
             fw_outputs_device_info,
             bw_fetches_names,
             bw_outputs_device_info)
@@ -347,25 +460,36 @@ class TorchOrtFactory:
                 "[TorchOrtFactory] instantiate dynamic class %r",
                 self.class_name)
             logger.info(
-                "[TorchOrtFactory] input_names=%r", self.input_names)
-            logger.info(
-                "[TorchOrtFactory] output_names=%r", self.output_names)
-            logger.info(
                 "[TorchOrtFactory] weights_to_train=%r",
                 self.weights_to_train)
+            logger.info(
+                "[TorchOrtFactory] grad_input_names=%r",
+                grad_input_names)
+            logger.info(
+                "[TorchOrtFactory] bw_fetches_names=%r",
+                bw_fetches_names)
+            logger.info(
+                "[TorchOrtFactory] device_index=%r",
+                self.device_index)
 
         kwargs = {
             '__doc__': doc,
             '__module__': __name__,
             '_run_options': self.run_options,
             '_sess': sess,
+            '_sess_eval': sess_eval,
             '_training_agent': training_agent,
             '_cache': OrtValueCache(),
             '_update_cache': False,
-            '_state_': [],
+            '_states': [],
             '_logger': logger,
             '_input_names': self.input_names,
+            '_grad_input_names': grad_input_names,
             '_output_names': self.output_names,
+            '_bw_fetches_names': bw_fetches_names,
+            '_fw_outputs_device_info': fw_outputs_device_info,
+            '_bw_outputs_device_info': bw_outputs_device_info,
+            '_fw_no_grad_output_device_info': fw_no_grad_output_device_info,
             '_weights_to_train': list(sorted(
                 self.weights_to_train)),
             'forward': staticmethod(ort_forward),
@@ -373,10 +497,11 @@ class TorchOrtFactory:
             '_graph_info': graph_info}
 
         if keep_models:
-            kwargs = kwargs.update(dict(
+            kwargs.update(dict(
                 _trained_onnx=onnx.load(BytesIO(train_onnx_model_serialized)),
                 _optimized_pre_grad_model=onnx.load(BytesIO(optimized_pre_grad_model)),
-                _graph_builder=builder))
+                _graph_builder=builder,
+                _factory=self))
 
-        newclass = type(self.class_name, (TorchOrtFunction,), **kwargs)
+        newclass = type(self.class_name, (TorchOrtFunction,), kwargs)
         return newclass
