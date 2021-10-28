@@ -5,6 +5,7 @@ codecov
 coverage
 cpyquickhelper
 flake8
+h5py
 joblib
 jupyter_sphinx
 lightgbm
