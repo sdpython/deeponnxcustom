@@ -2,18 +2,24 @@
 @file
 @brief Experimental.
 """
+import warnings
 import logging
 from textwrap import dedent
 from io import BytesIO
 import onnx
 from onnxruntime import InferenceSession
 from onnxruntime.capi._pybind_state import (  # pylint: disable=E0611
-    TrainingAgent, OrtValueCache, OrtModuleGraphBuilder,
-    OrtModuleGraphBuilderConfiguration, OrtDevice,
-    TrainingGraphTransformerConfiguration, OrtValueVector,
-    PartialGraphExecutionState)
-from onnxruntime.capi._pybind_state import (  # pylint: disable=E0611
     SessionIOBinding)
+try:
+    from onnxruntime.capi._pybind_state import (  # pylint: disable=E0611
+        TrainingAgent, OrtValueCache, OrtModuleGraphBuilder,
+        OrtModuleGraphBuilderConfiguration, OrtDevice,
+        TrainingGraphTransformerConfiguration, OrtValueVector,
+        PartialGraphExecutionState)
+except ImportError:
+    # onnxruntime-training is not installed.
+    warnings.warn(
+        "TorchOrtFactory cannot work without onnxruntime-training.")
 from onnxruntime import RunOptions
 from torch import is_grad_enabled  # pylint: disable=E0611
 from torch.autograd import Function
