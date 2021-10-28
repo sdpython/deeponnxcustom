@@ -21,7 +21,6 @@ import copy
 import numpy
 import onnx  # noqa
 from pandas import DataFrame
-import matplotlib.pyplot as plt
 from onnxruntime import get_device
 from sklearn.datasets import make_regression
 from sklearn.model_selection import train_test_split
@@ -241,4 +240,5 @@ error_ort = ((pred_ort.ravel() - t_y_test.ravel()) ** 2).sum() / N
 print("error torch: %f" % error_tch)
 print("error ort: %f" % error_ort)
 
+# import matplotlib.pyplot as plt
 # plt.show()
