@@ -241,4 +241,4 @@ error_ort = ((pred_ort.ravel() - t_y_test.ravel()) ** 2).sum() / N
 print("error torch: %f" % error_tch)
 print("error ort: %f" % error_ort)
 
-plt.show()
+# plt.show()

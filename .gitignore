@@ -55,3 +55,4 @@ _doc/sphinxdoc/source/LICENSE.txt
 _doc/sphinxdoc/source/README.rst
 _doc/sphinxdoc/source/deeponnxcustom/
 _doc/examples/*.dot
+_unittests/ut_documentation/*.dot
