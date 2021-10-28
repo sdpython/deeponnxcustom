@@ -16,13 +16,10 @@ Functions
 
 The first function creates the neural network.
 """
-import warnings
-from pprint import pprint
 import time
-import os
 import copy
 import numpy
-import onnx
+import onnx  # noqa
 from pandas import DataFrame
 import matplotlib.pyplot as plt
 from onnxruntime import get_device
@@ -32,7 +29,6 @@ from sklearn.utils import shuffle
 from mlprodict.plotting.plotting_onnx import plot_onnx
 from tqdm import tqdm
 import torch
-from torch.autograd import Variable
 import torch.nn.functional as F
 from onnxruntime.training import ORTModule
 from deeponnxcustom.tools.onnx_helper import save_as_onnx
@@ -93,7 +89,6 @@ def train_model(nn, X_train, y_train, max_iter=25,
     max_iter = int(max_iter)
     learning_rate_init = float(learning_rate_init)
     batch_size = int(batch_size)
-    profile = profile in (1, True, '1', 'True')
 
     if verbose:
         print("N=%d" % N)
