@@ -24,6 +24,7 @@ from onnxruntime import RunOptions
 from torch import is_grad_enabled  # pylint: disable=E0611
 from torch.autograd import Function
 from torch.utils.dlpack import from_dlpack, to_dlpack
+from torch._C import _from_dlpack
 
 
 class TorchOrtFunction(Function):
@@ -38,9 +39,17 @@ class TorchOrtFunction(Function):
         vector.push_back(packed, False)
 
     @staticmethod
+    def to_dlpack(ov):
+        return ov.to_dlpack()
+
+    @staticmethod
     def from_ort_to_torch(ort_value):
         "Converts a vector from OrtValue to pytorch."
-        packed = ort_value.to_dlpack()
+        if hasattr(ort_value, '__dlpack__'):
+            # return from_dlpack(ort_value) # no improvment with this solution
+            #return _from_dlpack(ort_value.__dlpack__())
+            return _from_dlpack(ort_value.to_dlpack())
+        packed = TorchOrtFunction.to_dlpack(ort_value)
         return from_dlpack(packed)
 
 
@@ -199,6 +208,11 @@ def ort_backward(ctx, *grad_outputs):
         res = cls.from_ort_to_torch(backward_outputs[0])
     else:
         res = tuple(cls.from_ort_to_torch(ov) for ov in backward_outputs)
+        if cls._debug:
+            print("DEBUG")
+            for i, ov in enumerate(backward_outputs):
+                print("BCK-RET: i=%d - ptr=%r - shape=%r" % (
+                    i, ov.shape(), ov.data_ptr()))
         if logger is not None:
             _log("got %r gradients" % len(res))
     if logger is not None:
@@ -327,7 +341,8 @@ class TorchOrtFactory:
             return OrtDevice.cuda()
         raise ValueError('Unexpected provider name %r.' % provider_name)
 
-    def create_class(self, enable_logging=False, keep_models=False):
+    def create_class(self, enable_logging=False, keep_models=False,
+                     debug=False):
         """
         Creates a class which inherits from
         :func:`torch.autograd.Function` and implements forward,
@@ -340,6 +355,7 @@ class TorchOrtFactory:
             and backward at debug level
         :param keep_models: stores additional information as
             static attributes
+        :param debug: display information
         :return: a new class
 
         The pattern follows the documentation described in
@@ -503,6 +519,7 @@ class TorchOrtFactory:
             '_states': [],
             '_logger': logger,
             '_input_names': self.input_names,
+            '_debug': debug,
             '_grad_input_names': grad_input_names,
             '_output_names': self.output_names,
             '_bw_fetches_names': bw_fetches_names,

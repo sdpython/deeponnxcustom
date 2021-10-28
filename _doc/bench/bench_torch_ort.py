@@ -15,6 +15,7 @@ ONNX graph
 import os
 import pprint
 import logging
+import time
 import numpy
 from pandas import DataFrame
 import matplotlib.pyplot as plt
@@ -90,6 +91,7 @@ with open("bench_torch_ort.onnx", "wb") as f:
 
 fact = TorchOrtFactory(onx, [w[0] for w in weights])
 cls = fact.create_class(keep_models=True, enable_logging=False)
+print("torch version:", torch.__version__)
 print(cls)
 
 
@@ -138,10 +140,19 @@ pprint.pprint(train_losses)
 # +++++++++
 
 folder = os.path.abspath(os.getcwd()).split('deeponnxcustom')[0]
-folder2 = os.path.abspath(os.path.split(
-    os.path.dirname(torch.__file__))[0])[:-6]
+folder2 = os.path.abspath(os.path.split(os.path.dirname(torch.__file__))[0])[:-6]
 
-ps, text = profile(lambda: train_cls(cls, device, x, y, weights, n_iter=100))
+# Same class but without any unnecessary data.
+cls = fact.create_class()
+
+begin = time.perf_counter()
+train_cls(cls, device, x, y, weights, n_iter=200)
+print("total time: %r" % (time.perf_counter() - begin))
+
+########################################
+# Full profile.
+
+ps, text = profile(lambda: train_cls(cls, device, x, y, weights, n_iter=200))
 print(type(ps))
 print(text.replace(folder, "").replace(folder2, ""))
 
@@ -155,7 +166,6 @@ folder2 = folder2.replace("\\", "/")
 
 def clean_text(x):
     x = x.replace(folder, "").replace(folder2, "")
-
 
 root, nodes = profile2graph(ps, clean_text=clean_text)
 text = root.to_text(fct_width=80)
