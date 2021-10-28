@@ -8,6 +8,7 @@ import numpy
 from skl2onnx.common.data_types import FloatTensorType
 from skl2onnx.algebra.onnx_ops import (  # pylint: disable=E0611
     OnnxRelu, OnnxMatMul)
+from mlprodict.onnx_tools.onnx_manipulations import onnx_rename_names
 try:
     from onnxruntime import TrainingSession
 except ImportError:
@@ -34,7 +35,7 @@ class TestTorchOrt(ExtTestCase):
             return grad_input
 
     @staticmethod
-    def MyReLUAdd_onnx(N, D_in, H, D_out):
+    def MyReLUAdd_onnx(N, D_in, H, D_out, rename):
         var = [('X', FloatTensorType([N, D_in]))]
         w1 = numpy.random.randn(D_in, H).astype(numpy.float32)
         w2 = numpy.random.randn(H, D_out).astype(numpy.float32)
@@ -47,6 +48,11 @@ class TestTorchOrt(ExtTestCase):
             var, target_opset=opv, outputs=[('Y', FloatTensorType())])
 
         weights = ['Ma_MatMulcst', 'Ma_MatMulcst1']
+        if rename:
+            names = ['W2', 'W1']
+            onx = onnx_rename_names(onx, replace=dict(zip(weights, names)))
+            weights = names
+            print(onx)
         return onx, weights
 
     @staticmethod
@@ -114,7 +120,7 @@ class TestTorchOrt(ExtTestCase):
             TestTorchOrt._assert_grad_almost_equal(w1, w1c)
             TestTorchOrt._assert_grad_almost_equal(w2, w2c)
 
-    def common_gradient(self):
+    def common_gradient(self, rename):
         dtype = torch.float  # pylint: disable=E1101
         device = torch.device("cpu")  # pylint: disable=E1101
 
@@ -133,7 +139,7 @@ class TestTorchOrt(ExtTestCase):
         TestTorchOrt._check_gradient_(
             TestTorchOrt.MyReLUAdd, device, dtype, x, y, H)
 
-        onx, weights = TestTorchOrt.MyReLUAdd_onnx(N, D_in, H, D_out)
+        onx, weights = TestTorchOrt.MyReLUAdd_onnx(N, D_in, H, D_out, rename)
         fact = TorchOrtFactory(onx, weights)
         cls = fact.create_class(enable_logging=True)
 
@@ -143,14 +149,19 @@ class TestTorchOrt(ExtTestCase):
 
     @unittest.skipIf(TrainingSession is None, reason="not training")
     def test_gradient(self):
-        self.common_gradient()
+        self.common_gradient(False)
+
+    @unittest.skipIf(TrainingSession is None, reason="not training")
+    def test_gradient_order(self):
+        self.common_gradient(True)
 
     @unittest.skipIf(TrainingSession is None, reason="not training")
     def test_gradient_logging(self):
         logger = logging.getLogger('deeponnxcustom')
         logger.setLevel(logging.DEBUG)
         _, logs = self.assertLogging(
-            self.common_gradient, 'deeponnxcustom', level=logging.DEBUG)
+            lambda: self.common_gradient(False), 'deeponnxcustom',
+            level=logging.DEBUG)
         self.assertIn("create InferenceSession", logs)
         logger.setLevel(logging.WARNING)
 
@@ -199,7 +210,7 @@ class TestTorchOrt(ExtTestCase):
         y = torch.randn(N, D_out, device=device,  # pylint: disable=E1101
                         dtype=dtype)
 
-        onx, weights = TestTorchOrt.MyReLUAdd_onnx(N, D_in, H, D_out)
+        onx, weights = TestTorchOrt.MyReLUAdd_onnx(N, D_in, H, D_out, False)
         fact = TorchOrtFactory(onx, weights)
         cls = fact.create_class(enable_logging=True)
         TestTorchOrt._check_gradient_iter_(
@@ -263,7 +274,7 @@ class TestTorchOrt(ExtTestCase):
 
         # onnxruntime
 
-        onx, weights = TestTorchOrt.MyReLUAdd_onnx(N, D_in, H, D_out)
+        onx, weights = TestTorchOrt.MyReLUAdd_onnx(N, D_in, H, D_out, False)
         fact = TorchOrtFactory(onx, weights)
         cls = fact.create_class(enable_logging=True)
 

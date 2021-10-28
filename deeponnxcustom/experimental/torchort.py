@@ -62,7 +62,8 @@ def ort_forward(ctx, *inputs):
             _log("begin with gradient")
         else:
             _log("begin")
-        _log("%r - %r" % (type(ctx), type(cls)))
+        _log("torch function %r" % type(ctx))
+        _log("ort class %r" % cls)
         _log("create OrtValueVector (through dlpack)")
 
     forward_inputs = OrtValueVector()
@@ -165,7 +166,8 @@ def ort_backward(ctx, *grad_outputs):
 
     if logger is not None:
         _log("begin")
-        _log("%r - %r" % (type(ctx), type(cls)))
+        _log("torch function %r" % type(ctx))
+        _log("ort class %r" % cls)
         _log("saved_tensors")
 
     inputs = ctx.saved_tensors
@@ -268,6 +270,11 @@ class TorchOrtFactory:
             raise ValueError(
                 "input_names and provider_options must have the same length.")
 
+        if list(sorted(self.weights_to_train)) != self.weights_to_train:
+            raise ValueError(
+                "List of weights to train must be sorted but is not %r."
+                "" % self.weights_to_train)
+
         if self.graph_builder_config is None:
             initializer_names = [
                 i.name for i in self.onnx_model.graph.initializer]
@@ -275,8 +282,7 @@ class TorchOrtFactory:
 
             config = OrtModuleGraphBuilderConfiguration()
             config.initializer_names = initializer_names
-            config.initializer_names_to_train = list(
-                sorted(self.weights_to_train))
+            config.initializer_names_to_train = self.weights_to_train
             config.input_names_require_grad = input_names
             config.build_gradient_graph = True
 
