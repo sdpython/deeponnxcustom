@@ -4,7 +4,7 @@
 @brief Experimentation with ONNX about deep learning, examples.
 """
 
-__version__ = "0.1.1"
+__version__ = "0.1.0"
 __author__ = "Xavier Dupré, ..."
 __max_supported_opset__ = 15  # Converters are tested up to this version.
 

@@ -40,6 +40,7 @@ class TorchOrtFunction(Function):
 
     @staticmethod
     def to_dlpack(ov):
+        "Converts an OrtValue into dlpack."
         return ov.to_dlpack()
 
     @staticmethod
@@ -47,7 +48,7 @@ class TorchOrtFunction(Function):
         "Converts a vector from OrtValue to pytorch."
         if hasattr(ort_value, '__dlpack__'):
             # return from_dlpack(ort_value) # no improvment with this solution
-            #return _from_dlpack(ort_value.__dlpack__())
+            # return _from_dlpack(ort_value.__dlpack__())
             return _from_dlpack(ort_value.to_dlpack())
         packed = TorchOrtFunction.to_dlpack(ort_value)
         return from_dlpack(packed)

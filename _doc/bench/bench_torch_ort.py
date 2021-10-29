@@ -140,7 +140,8 @@ pprint.pprint(train_losses)
 # +++++++++
 
 folder = os.path.abspath(os.getcwd()).split('deeponnxcustom')[0]
-folder2 = os.path.abspath(os.path.split(os.path.dirname(torch.__file__))[0])[:-6]
+folder2 = os.path.abspath(os.path.split(
+    os.path.dirname(torch.__file__))[0])[:-6]
 
 # Same class but without any unnecessary data.
 cls = fact.create_class()
@@ -166,6 +167,7 @@ folder2 = folder2.replace("\\", "/")
 
 def clean_text(x):
     x = x.replace(folder, "").replace(folder2, "")
+
 
 root, nodes = profile2graph(ps, clean_text=clean_text)
 text = root.to_text(fct_width=80)

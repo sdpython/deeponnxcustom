@@ -30,11 +30,19 @@ from mlprodict.testing.experimental_c import (
     code_optimisation)
 from mlprodict.testing.einsum.einsum_fct import _einsum
 from mlprodict.plotting.plotting_onnx import plot_onnx
+from deeponnxcustom.mytorch.tchrun import OnnxTorchRuntime
 print(code_optimisation())
 
 ###################################
 # Einsum: common code
 # +++++++++++++++++++
+#
+# The main function which benchmark a couple of options.
+#
+# * :func:`numpy.einsum`
+# * :func:`torch.einsum`
+# * function *einsum* from :epkg:`onnxruntime`
+# * decomposition of einsum into ONNX and processed with :epkg:`onnxruntime`
 
 try:
     from torch import einsum as torch_einsum, from_numpy
@@ -62,6 +70,15 @@ def build_ort_decomposed(equation, op_version=14):  # opset=13, 14, ...
     return cache.onnx_, lambda x, y: sess.run(None, {'X0': x, 'X1': y})
 
 
+def build_torch_decomposed(equation, op_version=14):  # opset=13, 14, ...
+    cache = _einsum(equation, numpy.float32, opset=op_version,
+                    optimize=True, verbose=True, runtime="python")
+    if not hasattr(cache, 'onnx_'):
+        cache.build()
+    sess = OnnxTorchRuntime(cache.onnx_)
+    return cache.onnx_, lambda x, y: sess.run(x, y)
+
+
 def loop_einsum_eq(fct, equation, xs, ys):
     for x, y in zip(xs, ys):
         fct(equation, x, y)
@@ -81,6 +98,7 @@ def benchmark_equation(equation, number=5, repeat=3):
     # equations
     ort_einsum = build_ort_einsum(equation)
     einsum_onnx, ort_einsum_decomposed = build_ort_decomposed(equation)
+    torch_onnx, ort_torch_decomposed = build_torch_decomposed(equation)
 
     K, S, M, E = 16, 2048, 768, 64
     C = S // E * 2
@@ -159,11 +177,20 @@ def benchmark_equation(equation, number=5, repeat=3):
         obs['fct'] = 'ort_dec'
         res.append(obs)
 
+        # torch decomposed
+        ctx['einsum'] = ort_torch_decomposed
+        ctx['xs'] = [from_numpy(x) for x in xs]
+        ctx['ys'] = [from_numpy(y) for y in ys]
+        obs = measure_time(
+            "loop_einsum(einsum, xs, ys)",
+            div_by_number=True, context=ctx, repeat=repeat, number=number)
+        obs['dim'] = dim
+        obs['fct'] = 'torch_dec'
+        res.append(obs)
+
         if torch_einsum is not None:
             # torch
             ctx['einsum'] = torch_einsum
-            ctx['xs'] = [from_numpy(x) for x in xs]
-            ctx['ys'] = [from_numpy(y) for y in ys]
             obs = measure_time(
                 "loop_einsum_eq(einsum, equation, xs, ys)",
                 div_by_number=True, context=ctx, repeat=repeat, number=number)
@@ -198,6 +225,9 @@ def benchmark_equation(equation, number=5, repeat=3):
 
     return df, rs, ax, einsum_onnx
 
+#################################
+# A last function to plot the ONNX graphs.
+
 
 def plot_onnx_einsum(equation, onx):
     filename = "einsum_eq_%s.onnx" % (
@@ -220,7 +250,7 @@ equation = "s,se->se"
 df, piv, ax, onx = benchmark_equation(equation)
 df.pivot("fct", "dim", "average")
 dfs.append(df)
-print(df.pivot("dim", "fct", "average"))
+df.pivot("dim", "fct", "average")
 
 ####################################
 # The onnx decomposition.
@@ -237,7 +267,7 @@ equation = "se,sc->sec"
 df, piv, ax, onx = benchmark_equation(equation)
 df.pivot("fct", "dim", "average")
 dfs.append(df)
-print(df.pivot("dim", "fct", "average"))
+df.pivot("dim", "fct", "average")
 
 ####################################
 # The onnx decomposition.
@@ -254,7 +284,7 @@ equation = "se,se->s"
 df, piv, ax, onx = benchmark_equation(equation)
 df.pivot("fct", "dim", "average")
 dfs.append(df)
-print(df.pivot("dim", "fct", "average"))
+df.pivot("dim", "fct", "average")
 
 ####################################
 # The onnx decomposition.
@@ -271,7 +301,7 @@ equation = "ks,ksm->sm"
 df, piv, ax, onx = benchmark_equation(equation)
 df.pivot("fct", "dim", "average")
 dfs.append(df)
-print(df.pivot("dim", "fct", "average"))
+df.pivot("dim", "fct", "average")
 
 ####################################
 # The onnx decomposition.
@@ -288,7 +318,7 @@ equation = "sec,sm->ecm"
 df, piv, ax, onx = benchmark_equation(equation, number=1, repeat=1)
 df.pivot("fct", "dim", "average")
 dfs.append(df)
-print(df.pivot("dim", "fct", "average"))
+df.pivot("dim", "fct", "average")
 
 ####################################
 # The onnx decomposition.
@@ -305,7 +335,7 @@ equation = "sec,ecm->sm"
 df, piv, ax, onx = benchmark_equation(equation, number=1, repeat=1)
 df.pivot("fct", "dim", "average")
 dfs.append(df)
-print(df.pivot("dim", "fct", "average"))
+df.pivot("dim", "fct", "average")
 
 ####################################
 # The onnx decomposition.
@@ -324,4 +354,4 @@ merged.to_csv("plot_%s.csv" % name, index=False)
 merged.to_excel("plot_%s.xlsx" % name, index=False)
 plt.savefig("plot_%s.png" % name)
 
-plt.show()
+# plt.show()

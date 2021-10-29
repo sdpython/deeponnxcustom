@@ -194,4 +194,26 @@ pprint.pprint(final_weights)
 df = DataFrame(data=train_losses, columns=['iter', 'train_loss'])
 df.plot(x="iter", y="train_loss", title="Training loss")
 
-plt.show()
+#######################################
+# ONNX Function in a torch module
+# +++++++++++++++++++++++++++++++
+#
+# Let's use the function into a torch module.
+
+
+if False:
+    class CustomModel(torch.nn.Module):
+        def __init__(self):
+            super(torch.nn.Module, self).__init__()
+
+        def forward(self, x):
+            return cls.apply(x)
+
+
+    model = CustomModel()
+
+    tx = from_numpy(x, requires_grad=True, device=device)
+    ty = model(tx)
+    print(ty)
+
+# plt.show()
