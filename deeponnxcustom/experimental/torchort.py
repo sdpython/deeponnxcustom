@@ -33,25 +33,36 @@ class TorchOrtFunction(Function):
     """
 
     @staticmethod
-    def append_to_ort_value_vector_as_ort_value(vector, tor_value):
-        "Converts a vector from pytorch to OrtValue."
-        packed = to_dlpack(tor_value)
-        vector.push_back(packed, False)
+    def from_torch_to_ort(tensors):
+        "Converts a list of pytorch tensors into an OrtValueVector."
+        vect = OrtValueVector()
+        vect.reserve(len(tensors))
+        for t in tensors:
+            if t is None:
+                # if gradient then 
+                # grad_output = torch.zeros(shape, device=device, dtype=dtype)
+                raise NotImplementedError(  # pragma: no cover
+                    "Empty vector found.")
+            if not t.is_contiguous():
+                # grad = grad.contiguous()
+                raise NotImplementedError(  # pragma: no cover
+                    "Non contiguous gradient found.")
+            vect.push_back(to_dlpack(t), False)
+        return vect
 
     @staticmethod
-    def to_dlpack(ov):
-        "Converts an OrtValue into dlpack."
-        return ov.to_dlpack()
-
-    @staticmethod
-    def from_ort_to_torch(ort_value):
-        "Converts a vector from OrtValue to pytorch."
-        if hasattr(ort_value, '__dlpack__'):
-            # return from_dlpack(ort_value) # no improvment with this solution
-            # return _from_dlpack(ort_value.__dlpack__())
-            return _from_dlpack(ort_value.to_dlpack())
-        packed = TorchOrtFunction.to_dlpack(ort_value)
-        return from_dlpack(packed)
+    def from_ort_to_torch(ort_values):
+        "Converts a OrtValueVector into a tuple of pytorch tensors."
+        # return tuple(_from_dlpack(ov.to_dlpack()) for ov in ort_values)
+        if hasattr(ort_values, 'to_dlpack'):
+            return tuple(ort_values.to_dlpack(_from_dlpack))
+        if len(ort_values) == 0:
+            raise RuntimeError(  # pragma: no cover
+                "The conversion fails on an empty vector.")
+        if hasattr(ort_values[0], '__dlpack__'):
+            return tuple(from_dlpack(ov) for ov in ort_values)
+        else:
+            return tuple(_from_dlpack(ov.to_dlpack()) for ov in ort_values)
 
 
 def ort_forward(ctx, *inputs):
@@ -76,10 +87,7 @@ def ort_forward(ctx, *inputs):
         _log("ort class %r" % cls)
         _log("create OrtValueVector (through dlpack)")
 
-    forward_inputs = OrtValueVector()
-    forward_inputs.reserve(len(inputs))
-    for i in inputs:
-        cls.append_to_ort_value_vector_as_ort_value(forward_inputs, i)
+    forward_inputs = cls.from_torch_to_ort(inputs)
 
     if training:
         forward_outputs = OrtValueVector()
@@ -110,11 +118,9 @@ def ort_forward(ctx, *inputs):
         else:
             if logger is not None:
                 _log("to torck.tensor")
-            if len(forward_outputs) == 1:
-                res = cls.from_ort_to_torch(forward_outputs[0])
-            else:
-                res = tuple(cls.from_ort_to_torch(ov)
-                            for ov in forward_outputs)
+            res = cls.from_ort_to_torch(forward_outputs)
+            if len(res) == 1:
+                res = res[0]
             if logger is not None:
                 _log("end")
             return res
@@ -153,10 +159,9 @@ def ort_forward(ctx, *inputs):
         ortvalues = iobinding.get_outputs()
         if logger is not None:
             _log("to torck.tensor")
-        if len(ortvalues) == 1:
-            res = cls.from_ort_to_torch(ortvalues[0])
-        else:
-            res = tuple(cls.from_ort_to_torch(ov) for ov in ortvalues)
+        res = cls.from_ort_to_torch(ortvalues)
+        if len(res) == 1:
+            res = res[0]
         if logger is not None:
             _log("end")
         return res
@@ -180,7 +185,7 @@ def ort_backward(ctx, *grad_outputs):
         _log("ort class %r" % cls)
         _log("saved_tensors")
 
-    inputs = ctx.saved_tensors
+    inputs = ctx.saved_tensors  # pylint: disable=W0612
     if logger is not None:
         _log("cls._state.pop()")
     state = cls._states.pop()
@@ -188,27 +193,16 @@ def ort_backward(ctx, *grad_outputs):
     if logger is not None:
         _log("create OrtValueVector (through dlpack)")
 
-    backward_inputs = OrtValueVector()
-    backward_inputs.reserve(len(inputs))
-    for i, grad in enumerate(grad_outputs):
-        if grad is None:
-            # grad_output = torch.zeros(shape, device=device, dtype=dtype)
-            raise NotImplementedError(
-                "Empty gradient for output %d." % i)
-        if not grad.is_contiguous():
-            # grad = grad.contiguous()
-            raise NotImplementedError(
-                "Non contiguous gradient for output %d." % i)
-        cls.append_to_ort_value_vector_as_ort_value(backward_inputs, grad)
+    backward_inputs = cls.from_torch_to_ort(grad_outputs)
 
     backward_outputs = OrtValueVector()
     if logger is not None:
         _log("run_backward")
     cls._training_agent.run_backward(backward_inputs, backward_outputs, state)
-    if len(backward_outputs) == 1:
-        res = cls.from_ort_to_torch(backward_outputs[0])
+    res = cls.from_ort_to_torch(backward_outputs)
+    if len(res) == 1:
+        res = res[0]
     else:
-        res = tuple(cls.from_ort_to_torch(ov) for ov in backward_outputs)
         if cls._debug:
             print("DEBUG")
             for i, ov in enumerate(backward_outputs):

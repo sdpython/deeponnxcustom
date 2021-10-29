@@ -209,7 +209,6 @@ if False:
         def forward(self, x):
             return cls.apply(x)
 
-
     model = CustomModel()
 
     tx = from_numpy(x, requires_grad=True, device=device)
