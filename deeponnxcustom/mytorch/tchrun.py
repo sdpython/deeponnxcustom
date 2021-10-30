@@ -44,7 +44,8 @@ class _function_OnnxTorchRuntime:
     def _reduceprod(data, axes=None, keepdims=1):
         if axes is None:
             if len(data.shape) == 1:
-                return torch.prod(data, 0, keepdims == 1)  # pylint: disable=E1101
+                return torch.prod(  # pylint: disable=E1101
+                    data, 0, keepdims == 1)
             raise NotImplementedError(
                 "Unable to prod(...) with shape=%r axes=%r keepdims=%r." % (
                     tuple(data.shape), axes, keepdims))
@@ -55,7 +56,8 @@ class _function_OnnxTorchRuntime:
     def _reducesum(data, axes=None, keepdims=1):
         if axes is None:
             if len(data.shape) == 1:
-                return torch.sum(data, 0, keepdims == 1)  # pylint: disable=E1101
+                return torch.sum(  # pylint: disable=E1101
+                    data, 0, keepdims == 1)
             raise NotImplementedError(
                 "Unable to prod(...) with shape=%r axes=%r keepdims=%r." % (
                     tuple(data.shape), axes, keepdims))
@@ -111,8 +113,10 @@ class OnnxTorchRuntime:
         'Identity': lambda x: x,
         'MatMul': torch.matmul,  # pylint: disable=E1101
         'Max': torch.max,  # pylint: disable=E1101
-        'ReduceProd': _function_OnnxTorchRuntime._reduceprod,  # pylint: disable=E1101
-        'ReduceSum': _function_OnnxTorchRuntime._reducesum,  # pylint: disable=E1101
+        'ReduceProd':
+            _function_OnnxTorchRuntime._reduceprod,  # pylint: disable=E1101
+        'ReduceSum':
+            _function_OnnxTorchRuntime._reducesum,  # pylint: disable=E1101
         'Reshape': _function_OnnxTorchRuntime._reshape,
         'Shape': _function_OnnxTorchRuntime._shape,
         'Squeeze': _function_OnnxTorchRuntime._squeeze,
