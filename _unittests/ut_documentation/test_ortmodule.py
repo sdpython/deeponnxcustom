@@ -1,5 +1,5 @@
 """
-@brief      test log(time=600s)
+@brief      test log(time=4s)
 """
 import unittest
 from pyquickhelper.pycode import ExtTestCase

@@ -185,7 +185,9 @@ def ort_backward(ctx, *grad_outputs):
         _log("ort class %r" % cls)
         _log("saved_tensors")
 
-    inputs = ctx.saved_tensors  # pylint: disable=W0612
+    inputs = ctx.saved_tensors
+    if cls._debug:
+        print("DEBUG: saved_tensors %r" % type(inputs))
     if logger is not None:
         _log("cls._state.pop()")
     state = cls._states.pop()

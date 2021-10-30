@@ -4,6 +4,7 @@
 """
 from onnx.numpy_helper import to_array
 import torch
+from ..tools.math_helper import decompose_permutation
 
 
 class _function_OnnxTorchRuntime:
@@ -34,10 +35,32 @@ class _function_OnnxTorchRuntime:
             a = a.T
         if transB:
             b = b.T
-        res = a @ b * alpha
+        res = torch.matmul(a, b) * alpha  # pylint: disable=E1101
         if c is not None:
             res += c * beta
         return res
+
+    @staticmethod
+    def _reduceprod(data, axes=None, keepdims=1):
+        if axes is None:
+            if len(data.shape) == 1:
+                return torch.prod(data, 0, keepdims == 1)  # pylint: disable=E1101
+            raise NotImplementedError(
+                "Unable to prod(...) with shape=%r axes=%r keepdims=%r." % (
+                    tuple(data.shape), axes, keepdims))
+        return torch.prod(  # pylint: disable=E1101
+            data, dim=axes, keepdim=keepdims == 1)
+
+    @staticmethod
+    def _reducesum(data, axes=None, keepdims=1):
+        if axes is None:
+            if len(data.shape) == 1:
+                return torch.sum(data, 0, keepdims == 1)  # pylint: disable=E1101
+            raise NotImplementedError(
+                "Unable to prod(...) with shape=%r axes=%r keepdims=%r." % (
+                    tuple(data.shape), axes, keepdims))
+        return torch.sum(  # pylint: disable=E1101
+            data, dim=axes, keepdim=keepdims == 1)
 
     @staticmethod
     def _reshape(t, shape):
@@ -48,33 +71,21 @@ class _function_OnnxTorchRuntime:
         return torch.tensor(t.shape)  # pylint: disable=E1101
 
     @staticmethod
+    def _squeeze(data, axes=None):
+        if axes is None:
+            return torch.squeeze(data)  # pylint: disable=E1101
+        if len(axes) == 1:
+            return torch.squeeze(data, axes[0])  # pylint: disable=E1101
+        for a in reversed(axes):
+            data = torch.squeeze(data, a)  # pylint: disable=E1101
+        return data
+
+    @staticmethod
     def _transpose(t, perm):
-        swapped = []
-        for i, p in enumerate(perm):
-            if i != p:
-                swapped.append(p)
-        if len(swapped) == 2:
-            return torch.transpose(t, *swapped)  # pylint: disable=E1101
-        if perm == (1, 2, 0):
-            t1 = torch.transpose(t, 2, 0)  # pylint: disable=E1101
-            return torch.transpose(t1, 1, 0)  # pylint: disable=E1101
-        if perm == (2, 0, 1):
-            t1 = torch.transpose(t, 1, 0)  # pylint: disable=E1101
-            return torch.transpose(t1, 2, 0)  # pylint: disable=E1101
-        if perm == (1, 3, 2, 0):
-            t1 = torch.transpose(t, 1, 0)  # pylint: disable=E1101
-            return torch.transpose(t1, 3, 1)  # pylint: disable=E1101
-        if perm == (2, 3, 1, 0):
-            t1 = torch.transpose(t, 3, 0)  # pylint: disable=E1101
-            t1 = torch.transpose(t1, 1, 0)  # pylint: disable=E1101
-            return torch.transpose(t1, 2, 0)  # pylint: disable=E1101
-        if perm == (2, 0, 3, 1):
-            t1 = torch.transpose(t, 1, 0)  # pylint: disable=E1101
-            t1 = torch.transpose(t1, 3, 0)  # pylint: disable=E1101
-            return torch.transpose(t1, 2, 0)  # pylint: disable=E1101
-        raise NotImplementedError(
-            "Unable to permute more than two axes %r and shape=%r."
-            "" % (perm, t.shape))
+        transitions = decompose_permutation(perm)
+        for a, b in transitions:
+            t = torch.transpose(t, a, b)  # pylint: disable=E1101
+        return t
 
     @staticmethod
     def _unqueeze(t, dim):
@@ -100,12 +111,11 @@ class OnnxTorchRuntime:
         'Identity': lambda x: x,
         'MatMul': torch.matmul,  # pylint: disable=E1101
         'Max': torch.max,  # pylint: disable=E1101
-        'ReduceProd': torch.prod,  # pylint: disable=E1101
-        'ReduceSum': torch.sum,  # pylint: disable=E1101
+        'ReduceProd': _function_OnnxTorchRuntime._reduceprod,  # pylint: disable=E1101
+        'ReduceSum': _function_OnnxTorchRuntime._reducesum,  # pylint: disable=E1101
         'Reshape': _function_OnnxTorchRuntime._reshape,
         'Shape': _function_OnnxTorchRuntime._shape,
-        'Squeeze': lambda t, dim: torch.squeeze(  # pylint: disable=E1101
-            t, dim[0]),
+        'Squeeze': _function_OnnxTorchRuntime._squeeze,
         'Transpose': _function_OnnxTorchRuntime._transpose,
         'Unsqueeze': _function_OnnxTorchRuntime._unqueeze,
     }
@@ -123,6 +133,10 @@ class OnnxTorchRuntime:
         """
         res = {}
         for init in onnx_model.graph.initializer:
+            if init.name in res:
+                raise RuntimeError(
+                    "Duplicated initializer name %r for type %r." % (
+                        init.name, init.op_type))
             res[init.name] = torch.from_numpy(  # pylint: disable=E1101
                 to_array(init))
         return res
@@ -133,21 +147,27 @@ class OnnxTorchRuntime:
         Builds a dictionary with all attributes
         """
         res = {}
-        for node in onnx_model.graph.node:
-            res[node.name] = {}
+        for i, node in enumerate(onnx_model.graph.node):
+            node_name = "N%d_%s" % (i, node.name)
+            res[node_name] = {}
             for at in node.attribute:
+                if node.op_type in ('ReduceSum', 'ReduceProd'):
+                    if at.name == 'axes':
+                        res[node_name][at.name] = tuple(at.ints)
+                    else:
+                        res[node_name][at.name] = at.i
                 if node.op_type == 'Transpose':
-                    res[node.name][at.name] = tuple(at.ints)
+                    res[node_name][at.name] = tuple(at.ints)
                 elif node.op_type == 'Gather':
-                    res[node.name][at.name] = at.i
+                    res[node_name][at.name] = at.i
                 elif node.op_type == 'Gemm':
                     if at.name in ('alpha', 'beta'):
-                        res[node.name][at.name] = at.f
+                        res[node_name][at.name] = at.f
                     else:
-                        res[node.name][at.name] = at.i
+                        res[node_name][at.name] = at.i
         return res
 
-    def _run_op(self, node, *inputs):
+    def _run_op(self, node_name, node, *inputs):
         """
         Executes a node with :epkg:`pytorch`.
         Returns a dictionary.
@@ -158,12 +178,12 @@ class OnnxTorchRuntime:
                 "input (type=%r)." % node.op_type)
         tf = OnnxTorchRuntime._mapping[node.op_type]
         try:
-            res = tf(*inputs, **self._atts[node.name])
+            res = tf(*inputs, **self._atts[node_name])
         except (TypeError, IndexError, RuntimeError) as e:
             raise RuntimeError(
                 "Unable to run operator %r with len(inputs)=%d, atts=%r.\n%r"
                 "" % (node.op_type, len(inputs),
-                      self._atts[node.name], inputs)) from e
+                      self._atts[node_name], inputs)) from e
         if isinstance(res, tuple):
             return res
         return (res, )
@@ -180,17 +200,25 @@ class OnnxTorchRuntime:
         for i, v in zip(self._onnx_model.graph.input, inputs):
             keep[i.name] = v
 
-        for node in self._onnx_model.graph.node:
+        for i, node in enumerate(self._onnx_model.graph.node):
+            node_name = "N%d_%s" % (i, node.name)
             node_inputs = [keep[name] for name in node.input]
+            res = self._run_op(node_name, node, *node_inputs)
             if verbose:
-                print(
-                    "[OnnxTorchRuntime.run] op=%r, name=%r, shapes=[%r], "
-                    "atts=%r" % (
-                        node.op_type, node.name,
-                        ", ".join(map(lambda x: str(getattr(x, 'shape', '?')),
-                                      node_inputs)),
-                        self._atts[node.name]))
-            res = self._run_op(node, *node_inputs)
+                print(  # pragma: no cover
+                    "[OnnxTorchRuntime.run] op=%r, shapes=[%s] "
+                    "-> %s, name=%r in [%r, %r], atts=%r" % (
+                        node.op_type,
+                        ", ".join(map(
+                            lambda x: str(tuple(getattr(x, 'shape', '?'))),
+                            node_inputs)),
+                        ", ".join(map(
+                            lambda x: str(tuple(getattr(x, 'shape', '?'))),
+                            res)),
+                        node.name,
+                        float(min(t.min() for t in res)),
+                        float(max(t.max() for t in res)),
+                        self._atts[node_name]))
             for name, value in zip(node.output, res):
                 if not isinstance(value, torch.Tensor):
                     raise TypeError(
