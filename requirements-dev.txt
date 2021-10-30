@@ -16,6 +16,7 @@ mlprodict>=0.7
 nbsphinx
 onnxconverter-common
 onnxmltools
+openpyxl
 pillow
 py-spy
 pandas
