@@ -28,7 +28,7 @@ from tqdm import tqdm
 from mlprodict.onnx_tools.onnx_manipulations import onnx_rename_names
 from mlprodict.plotting.plotting_onnx import plot_onnx
 import torch
-from deeponnxcustom.experimental.torchort import TorchOrtFactory
+from deeponnxcustom.onnxtorch.torchort import TorchOrtFactory
 
 
 def from_numpy(v, device=None, requires_grad=False):

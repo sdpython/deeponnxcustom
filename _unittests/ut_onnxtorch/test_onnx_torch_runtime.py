@@ -10,7 +10,7 @@ from skl2onnx.algebra.onnx_ops import (  # pylint: disable=E0611
 from mlprodict.testing.einsum.einsum_fct import _einsum
 from mlprodict.onnx_tools.onnx_manipulations import onnx_rename_names
 import torch
-from deeponnxcustom.mytorch.tchrun import OnnxTorchRuntime
+from deeponnxcustom.onnxtorch.tchrun import OnnxTorchRuntime
 
 
 class TestOnnxTorchRuntime(ExtTestCase):

@@ -30,7 +30,7 @@ from mlprodict.testing.experimental_c import (
     code_optimisation)
 from mlprodict.testing.einsum.einsum_fct import _einsum
 from mlprodict.plotting.plotting_onnx import plot_onnx
-from deeponnxcustom.mytorch.tchrun import OnnxTorchRuntime
+from deeponnxcustom.onnxtorch.tchrun import OnnxTorchRuntime
 print(code_optimisation())
 
 ###################################
@@ -100,7 +100,7 @@ def benchmark_equation(equation, number=5, repeat=3):
     einsum_onnx, ort_einsum_decomposed = build_ort_decomposed(equation)
     torch_onnx, ort_torch_decomposed = build_torch_decomposed(equation)
 
-    K, S, M, E = 16, 2048, 768, 64
+    K, S, M, E = 16, 1024, 768, 64
     C = S // E * 2
     SIZE_MAP = {'K': K, 'S': S, 'E': E, 'C': C, 'M': M}
 

@@ -104,6 +104,11 @@ class _function_OnnxTorchRuntime:
 class OnnxTorchRuntime:
     """
     Executes ONNX graph using :epkg:`torch` function.
+    This is a very simple runtime. It goes through every
+    node in the ONNX graph and execute with the corresponding
+    torch functions.
+
+    :param onnx_model: ONNX model
     """
 
     _mapping = {

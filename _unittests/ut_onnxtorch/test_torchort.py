@@ -16,7 +16,7 @@ except ImportError:
     TrainingSession = None
 import torch
 from torch.autograd import Function  # pylint: disable=C0411
-from deeponnxcustom.experimental.torchort import TorchOrtFactory
+from deeponnxcustom.onnxtorch.torchort import TorchOrtFactory
 
 
 class TestTorchOrt(ExtTestCase):
