@@ -15,7 +15,7 @@ class TestOnnxHelper(ExtTestCase):
 
         class CustomNet(torch.nn.Module):
             def __init__(self, n_features, hidden_layer_sizes, n_output):
-                super(CustomNet, self).__init__()  # pylint: disable=R1725
+                super(CustomNet, self).__init__()
                 self.hidden = []
 
                 size = n_features

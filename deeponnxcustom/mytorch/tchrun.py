@@ -181,15 +181,16 @@ class OnnxTorchRuntime:
             keep[i.name] = v
 
         for node in self._onnx_model.graph.node:
-            inputs = [keep[name] for name in node.input]
+            node_inputs = [keep[name] for name in node.input]
             if verbose:
-                print("[OnnxTorchRuntime.run] op=%r, name=%r, shapes=[%r], "
-                      "atts=%r" % (
-                          node.op_type, node.name,
-                          ", ".join(map(lambda x: str(getattr(x, 'shape', '?')),
-                                        inputs)),
-                          self._atts[node.name]))
-            res = self._run_op(node, *inputs)
+                print(
+                    "[OnnxTorchRuntime.run] op=%r, name=%r, shapes=[%r], "
+                    "atts=%r" % (
+                        node.op_type, node.name,
+                        ", ".join(map(lambda x: str(getattr(x, 'shape', '?')),
+                                      node_inputs)),
+                        self._atts[node.name]))
+            res = self._run_op(node, *node_inputs)
             for name, value in zip(node.output, res):
                 if not isinstance(value, torch.Tensor):
                     raise TypeError(
