@@ -10,7 +10,19 @@ class _function_OnnxTorchRuntime:
 
     @staticmethod
     def _concat(*tensors, axis=0):
-        return torch.cat(tensors, dim=axis)  # pylint: disable=E1101
+        nonnull = [t for t in tensors if len(t.shape) > 0]
+        if len(nonnull) == 0:
+            raise NotImplementedError(
+                "Cannot concatenate empty tensors.")
+        if len(nonnull) == 1:
+            return nonnull[0]
+        try:
+            return torch.cat(nonnull, dim=axis)  # pylint: disable=E1101
+        except RuntimeError as e:
+            raise RuntimeError(
+                "Unable to run 'cat' with shape=%r and axis=%r." % (
+                    ", ".join(str(t.shape) for t in tensors),
+                    axis)) from e
 
     @staticmethod
     def _gather(t, indices, axis=0):
@@ -49,6 +61,17 @@ class _function_OnnxTorchRuntime:
         if perm == (2, 0, 1):
             t1 = torch.transpose(t, 1, 0)  # pylint: disable=E1101
             return torch.transpose(t1, 2, 0)  # pylint: disable=E1101
+        if perm == (1, 3, 2, 0):
+            t1 = torch.transpose(t, 1, 0)  # pylint: disable=E1101
+            return torch.transpose(t1, 3, 1)  # pylint: disable=E1101
+        if perm == (2, 3, 1, 0):
+            t1 = torch.transpose(t, 3, 0)  # pylint: disable=E1101
+            t1 = torch.transpose(t1, 1, 0)  # pylint: disable=E1101
+            return torch.transpose(t1, 2, 0)  # pylint: disable=E1101
+        if perm == (2, 0, 3, 1):
+            t1 = torch.transpose(t, 1, 0)  # pylint: disable=E1101
+            t1 = torch.transpose(t1, 3, 0)  # pylint: disable=E1101
+            return torch.transpose(t1, 2, 0)  # pylint: disable=E1101
         raise NotImplementedError(
             "Unable to permute more than two axes %r and shape=%r."
             "" % (perm, t.shape))
@@ -77,6 +100,7 @@ class OnnxTorchRuntime:
         'Identity': lambda x: x,
         'MatMul': torch.matmul,  # pylint: disable=E1101
         'Max': torch.max,  # pylint: disable=E1101
+        'ReduceProd': torch.prod,  # pylint: disable=E1101
         'ReduceSum': torch.sum,  # pylint: disable=E1101
         'Reshape': _function_OnnxTorchRuntime._reshape,
         'Shape': _function_OnnxTorchRuntime._shape,

@@ -39,7 +39,7 @@ class TorchOrtFunction(Function):
         vect.reserve(len(tensors))
         for t in tensors:
             if t is None:
-                # if gradient then 
+                # if gradient then
                 # grad_output = torch.zeros(shape, device=device, dtype=dtype)
                 raise NotImplementedError(  # pragma: no cover
                     "Empty vector found.")
