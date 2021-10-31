@@ -4,7 +4,7 @@
 import unittest
 from pyquickhelper.loghelper import BufferedPrint
 from pyquickhelper.pycode import ExtTestCase
-from onnxcustom.__main__ import main
+from deeponnxcustom.__main__ import main
 
 
 class TestCliCheck(ExtTestCase):
