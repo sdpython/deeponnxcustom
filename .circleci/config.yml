@@ -44,8 +44,8 @@ jobs:
           name: flake8
           command: |
             . venv/bin/activate
-            python -m flake8 deeponnxcustom
-            python -m flake8 _doc/examples
+            python -m flake8 --ignore=E501 deeponnxcustom
+            python -m flake8 --ignore=E501 _doc/examples
 
       - run:
           name: run tests
