@@ -53,7 +53,9 @@ This project leverages :epkg:`ONNX` to train models.
     api/index
     gyexamples/index
     glossary
-    versions
+    i_cmd
+    HISTORY
+    license
     other_pages
 
 Sources available on
