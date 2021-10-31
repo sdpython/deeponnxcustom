@@ -145,7 +145,7 @@ class TestTorchOrt(ExtTestCase):
             onx = onnx_rename_weights(onx)
             weights = [init.name for init in onx.graph.initializer]
         fact = TorchOrtFactory(onx, weights)
-        cls = fact.create_class(enable_logging=True)
+        cls = fact.create_class(enable_logging=True, keep_models=True)
 
         TestTorchOrt._check_(cls, device, dtype, x, y, H, False)
         TestTorchOrt._check_(cls, device, dtype, x, y, H, True)

@@ -54,10 +54,10 @@ This project leverages :epkg:`ONNX` to train models.
     gyexamples/index
     glossary
     versions
+    other_pages
 
 Sources available on
 `github/deeponnxcustom <https://github.com/sdpython/deeponnxcustom>`_.
-
 
 +----------------------+---------------------+---------------------+--------------------+------------------------+------------------------------------------------+
 | :ref:`l-modules`     |  :ref:`l-functions` | :ref:`l-classes`    | :ref:`l-methods`   | :ref:`l-staticmethods` | :ref:`l-properties`                            |

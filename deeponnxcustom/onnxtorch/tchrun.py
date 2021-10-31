@@ -19,7 +19,7 @@ class _function_OnnxTorchRuntime:
             return nonnull[0]
         try:
             return torch.cat(nonnull, dim=axis)  # pylint: disable=E1101
-        except RuntimeError as e:
+        except RuntimeError as e:  # pragma: no cover
             raise RuntimeError(
                 "Unable to run 'cat' with shape=%r and axis=%r." % (
                     ", ".join(str(t.shape) for t in tensors),
@@ -154,7 +154,7 @@ class OnnxTorchRuntime:
         res = {}
         for init in onnx_model.graph.initializer:
             if init.name in res:
-                raise RuntimeError(
+                raise RuntimeError(  # pragma: no cover
                     "Duplicated initializer name %r for type %r." % (
                         init.name, init.op_type))
             res[init.name] = torch.from_numpy(  # pylint: disable=E1101
@@ -199,13 +199,13 @@ class OnnxTorchRuntime:
         tf = OnnxTorchRuntime._mapping[node.op_type]
         try:
             res = tf(*inputs, **self._atts[node_name])
-        except (TypeError, IndexError, RuntimeError) as e:
+        except (TypeError, IndexError, RuntimeError) as e:  # pragma: no cover
             raise RuntimeError(
                 "Unable to run operator %r with len(inputs)=%d, atts=%r.\n%r"
                 "" % (node.op_type, len(inputs),
                       self._atts[node_name], inputs)) from e
         if isinstance(res, tuple):
-            return res
+            return res  # pragma: no cover
         return (res, )
 
     def run(self, *inputs, verbose=False):
@@ -241,7 +241,7 @@ class OnnxTorchRuntime:
                         self._atts[node_name]))
             for name, value in zip(node.output, res):
                 if not isinstance(value, torch.Tensor):
-                    raise TypeError(
+                    raise TypeError(  # pragma: no cover
                         "Unexpected value for name=%r, type=%r." % (
                             name, type(value)))
                 keep[name] = value
@@ -249,4 +249,4 @@ class OnnxTorchRuntime:
         res = tuple(keep[o.name] for o in self._onnx_model.graph.output)
         if len(res) == 1:
             return res[0]
-        return res
+        return res  # pragma: no cover

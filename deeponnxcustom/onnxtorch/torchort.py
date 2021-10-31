@@ -16,7 +16,7 @@ try:
         OrtModuleGraphBuilderConfiguration, OrtDevice,
         TrainingGraphTransformerConfiguration, OrtValueVector,
         PartialGraphExecutionState)
-except ImportError:
+except ImportError:  # pragma: no cover
     # onnxruntime-training is not installed.
     warnings.warn(
         "TorchOrtFactory cannot work without onnxruntime-training.")
@@ -63,7 +63,8 @@ class TorchOrtFunction(Function):
             raise RuntimeError(  # pragma: no cover
                 "The conversion fails on an empty vector.")
         if hasattr(ort_values[0], '__dlpack__'):
-            return tuple(from_dlpack(ov) for ov in ort_values)
+            return tuple(  # pragma: no cover
+                from_dlpack(ov) for ov in ort_values)
         else:
             return tuple(_from_dlpack(ov.to_dlpack()) for ov in ort_values)
 
@@ -130,7 +131,7 @@ def ort_forward(ctx, *inputs):
     else:
         # what about bind_input (+ data_ptr)
         if len(forward_inputs) != len(cls._grad_input_names):
-            raise RuntimeError(
+            raise RuntimeError(  # pragma: no cover
                 "Size mismatch len(inputs)=%d, len(onnx inputs)=%d." % (
                     len(forward_inputs), len(cls._grad_input_names)))
         iobinding = SessionIOBinding(cls._sess_eval._sess)
@@ -190,7 +191,8 @@ def ort_backward(ctx, *grad_outputs):
 
     inputs = ctx.saved_tensors
     if cls._debug:
-        print("DEBUG: saved_tensors %r" % type(inputs))
+        print(  # pragma: no cover
+            "DEBUG: saved_tensors %r" % type(inputs))
     if logger is not None:
         _log("cls._state.pop()")
     state = cls._states.pop()
@@ -208,7 +210,7 @@ def ort_backward(ctx, *grad_outputs):
     if len(res) == 1:
         res = res[0]
     else:
-        if cls._debug:
+        if cls._debug:  # pragma: no cover
             print("DEBUG")
             for i, ov in enumerate(backward_outputs):
                 print("BCK-RET: i=%d - ptr=%r - shape=%r" % (
@@ -272,7 +274,7 @@ class TorchOrtFactory:
 
         # default
         if self.weights_to_train is None:
-            raise ValueError(
+            raise ValueError(  # pragma: no cover
                 "weights_to_train must be specified.")
         if self.input_names is None:
             self.input_names = [obj.name
@@ -291,10 +293,10 @@ class TorchOrtFactory:
             self.run_options.training_mode = True
 
         if len(self.input_names) != len(self.providers):
-            raise ValueError(
+            raise ValueError(  # pragma: no cover
                 "input_names and providers must have the same length.")
         if len(self.input_names) != len(self.provider_options):
-            raise ValueError(
+            raise ValueError(  # pragma: no cover
                 "input_names and provider_options must have the same length.")
 
         if list(sorted(self.weights_to_train)) != self.weights_to_train:
@@ -337,7 +339,7 @@ class TorchOrtFactory:
                 continue
             try:
                 value = getattr(obj, c)
-            except AttributeError:
+            except AttributeError:  # pragma: no cover
                 continue
             rows.append("%s=%r" % (c, value))
 
@@ -351,9 +353,10 @@ class TorchOrtFactory:
     def _provider_name_to_device_type(provider_name):
         if provider_name == 'CPUExecutionProvider':
             return OrtDevice.cpu()
-        if provider_name == 'GPUExecutionProvider':
+        if provider_name == 'GPUExecutionProvider':  # pragma: no cover
             return OrtDevice.cuda()
-        raise ValueError('Unexpected provider name %r.' % provider_name)
+        raise ValueError(  # pragma: no cover
+            'Unexpected provider name %r.' % provider_name)
 
     def create_class(self, enable_logging=False, keep_models=False,
                      debug=False):
