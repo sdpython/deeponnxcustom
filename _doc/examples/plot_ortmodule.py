@@ -66,10 +66,12 @@ plot_onnx("plot_ortmodule.onnx", temp_dot="plot_ortmodule.dot")
 # Training
 # ++++++++
 #
+# The function *train_model* works with a :class:`torch.nn.Module` and
+# :epkg:`ORTModule`.
 
 
 def train_model(nn, X_train, y_train, max_iter=25,
-                learning_rate_init=1e-4, batch_size=10,
+                learning_rate_init=1e-5, batch_size=10,
                 device='cpu', opset=12, verbose=False,
                 use_ortmodule=False):
     """
@@ -202,6 +204,7 @@ trained_nn_tch, losses_tch, duration = train_model(
 
 print("Torch, %d iterations, final loss=%f, duration=%f" % (
     len(losses_tch), losses_tch[-1], duration))
+print('type(trained_nn_tch):', type(trained_nn_tch))
 
 #############################
 # Training with ORTModule
@@ -213,6 +216,7 @@ trained_nn_ort, losses_ort, duration = train_model(
 
 print("ORT, %d iterations, final loss=%f, duration=%f" % (
     len(losses_ort), losses_ort[-1], duration))
+print('type(trained_nn_ort):', type(trained_nn_ort))
 
 #################################
 # Visualisation

@@ -4,10 +4,12 @@
 ONNX in a torch function
 ========================
 
-The ONNX graph is not really interesting but it shows
-how to create a custom function following torch API
-which can be used to as a layer in a module.
-Methods forward and backward are implemented with ONNX.
+The ONNX graph used in this example is not really
+interesting but it shows how to create a custom autograd function
+following torch API (`Extending Pytorch
+<https://pytorch.org/docs/stable/notes/extending.html>`_).
+Methods forward and backward are implemented with ONNX
+and :epkg:`onnxruntime-training`.
 
 .. contents::
     :local:
@@ -120,7 +122,7 @@ ax.set_title("Model to train")
 #            return ...
 #
 # The logic is hidden in :meth:`TorchOrtFactory.create_class
-# <deeponnxcustom.experimental.torchort.TorchOrtFactory.create_class>`.
+# <deeponnxcustom.onnxtorch.torchort.TorchOrtFactory.create_class>`.
 
 fact = TorchOrtFactory(onx, [w[0] for w in weights])
 
@@ -134,14 +136,20 @@ cls = fact.create_class(keep_models=True, enable_logging=enable_logging)
 print(cls)
 
 ##########################################
-# It produces the following inference graph.
+# It produces the following inference graphs.
+# The left one is the original one. The model on the left
+# is the same except initializer are also inputs.
+# If the input is missing, the initializer is considered
+# as a default value.
 
 fix, ax = plt.subplots(1, 2, figsize=(15, 10))
 plot_onnx(onx, ax=ax[0])
 plot_onnx(cls._optimized_pre_grad_model, ax=ax[1])
 
 ##########################################
-# And the inference graph.
+# And the gradient graph. It has the same inputs
+# the previous graph on the right and has an output for every
+# trained parameter.
 
 fix, ax = plt.subplots(1, 1, figsize=(10, 10))
 plot_onnx(cls._trained_onnx, ax=ax)
@@ -150,6 +158,13 @@ plot_onnx(cls._trained_onnx, ax=ax)
 ##########################################
 # Training
 # ++++++++
+#
+# We consider a simple example based on torch documentation
+# (`Learning Pytorch with Example
+# <https://pytorch.org/tutorials/beginner/pytorch_with_examples.html>`_
+# or `110 - First percepton with pytorch
+# <http://www.xavierdupre.fr/app/ensae_teaching_dl/helpsphinx/
+# notebooks/110_Perceptron_Iris.html>`_).
 
 
 def train_cls(cls, device, x, y, weights, n_iter=20, learning_rate=1e-2):
@@ -194,25 +209,5 @@ pprint.pprint(final_weights)
 df = DataFrame(data=train_losses, columns=['iter', 'train_loss'])
 df.plot(x="iter", y="train_loss", title="Training loss")
 
-#######################################
-# ONNX Function in a torch module
-# +++++++++++++++++++++++++++++++
-#
-# Let's use the function into a torch module.
-
-
-if False:
-    class CustomModel(torch.nn.Module):
-        def __init__(self):
-            super(torch.nn.Module, self).__init__()
-
-        def forward(self, x):
-            return cls.apply(x)
-
-    model = CustomModel()
-
-    tx = from_numpy(x, requires_grad=True, device=device)
-    ty = model(tx)
-    print(ty)
 
 # plt.show()

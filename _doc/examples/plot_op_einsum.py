@@ -8,6 +8,14 @@ This example compares the performance of :func:`numpy.einsum`,
 :func:`torch.einsum` and its decomposition into standard
 vector operations for a couple of equations.
 
+* :func:`numpy.einsum`
+* :func:`torch.einsum`
+* function *einsum* from :epkg:`onnxruntime`
+* decomposition of *einsum* into ONNX and processed with :epkg:`onnxruntime`
+* decomposition of *einsum* into ONNX and processed with :epkg:`pytorch`
+  with the simple runtime :class:`OnnxTorchRuntime
+  <deeponnxcustom.onnxtorch.OnnxTorchRuntime>`.
+
 .. contents::
     :local:
 
@@ -38,11 +46,6 @@ print(code_optimisation())
 # +++++++++++++++++++
 #
 # The main function which benchmark a couple of options.
-#
-# * :func:`numpy.einsum`
-# * :func:`torch.einsum`
-# * function *einsum* from :epkg:`onnxruntime`
-# * decomposition of einsum into ONNX and processed with :epkg:`onnxruntime`
 
 try:
     from torch import einsum as torch_einsum, from_numpy
