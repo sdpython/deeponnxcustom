@@ -140,8 +140,10 @@ class TestTorchOrt(ExtTestCase):
             TestTorchOrt.MyReLUAdd, device, dtype, x, y, H)
 
         onx, weights = TestTorchOrt.MyReLUAdd_onnx(N, D_in, H, D_out, rename)
-        self.assertRaise(lambda: TorchOrtFactory(onx, weights), ValueError)
-        onx = onnx_rename_weights(onx)
+        if rename:
+            self.assertRaise(lambda: TorchOrtFactory(onx, weights), ValueError)
+            onx = onnx_rename_weights(onx)
+            weights = [init.name for init in onx.graph.initializer]
         fact = TorchOrtFactory(onx, weights)
         cls = fact.create_class(enable_logging=True)
 

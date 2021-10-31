@@ -63,7 +63,8 @@ def onnx_rename_weights(onx):
     .. note::
         The function does not go into subgraphs.
     """
-    from mlprodict.onnx_tools.onnx_manipulations import onnx_rename_names  # pylint: disable=C0415
+    from mlprodict.onnx_tools.onnx_manipulations import (  # pylint: disable=C0415
+        onnx_rename_names)
 
     init = [init.name for init in onx.graph.initializer]
     ninit = max(1, int(math.log(len(init)) / math.log(10) + 1))
