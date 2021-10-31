@@ -51,7 +51,8 @@ This project leverages :epkg:`ONNX` to train models.
     tutorial/index
     doc
     api/index
-    auto_examples/index
+    gyexamples/index
+    glossary
     versions
 
 Sources available on

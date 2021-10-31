@@ -30,6 +30,9 @@ from torch._C import _from_dlpack
 class TorchOrtFunction(Function):
     """
     Ancestor to all classes created by @see cl TorchOrtFactory.
+    It implements simple functions to move the ownership of tensors
+    from *onnxruntime* to *pytorch* (or the other way around)
+    through :epkg:`DLPack` structures.
     """
 
     @staticmethod
@@ -221,7 +224,8 @@ class TorchOrtFactory:
     """
     A class which dynamically another class which implements a
     custom function (see :epkg:`autograd functions`).
-    Use ONNX inside a torch function.
+    Use ONNX inside a torch function. Only initializers
+    can be trained, no parameters.
 
     :param onnx_model: onnx model
     :param weights_to_train: names of the weights to train
@@ -229,12 +233,21 @@ class TorchOrtFactory:
     :param output_names: output names or None for all
     :param class_name: class name
     :param sess_options: see :epkg:`SessionOptions`
-    :param providers: see :epkg:`TrainingSession`
-    :param provider_options: see :epkg:`TrainingSession`
+    :param providers: see :epkg:`InferenceSession`
+    :param provider_options: see :epkg:`InferenceSession`
     :param run_options: see :epkg:`RunOptions`
-    :param graph_builder_config: see :epkg:`OrtModuleGraphBuilderConfiguration`
+    :param graph_builder_config:
+        see :epkg:`OrtModuleGraphBuilderConfiguration`
     :param device_index: used for cuda (0 for `cuda:0`,
         `cuda:1`, ...), 0 by default
+
+    .. note::
+        The current implementation of :epkg:`onnxruntime` forces
+        the weights to train to appear in the alphabetical order.
+        The constructor checks that condition is verified.
+
+    .. warning::
+        This class does not consider subgraphs.
     """
 
     def __init__(self, onnx_model, weights_to_train,
@@ -258,6 +271,9 @@ class TorchOrtFactory:
         self.graph_builder_config = graph_builder_config
 
         # default
+        if self.weights_to_train is None:
+            raise ValueError(
+                "weights_to_train must be specified.")
         if self.input_names is None:
             self.input_names = [obj.name
                                 for obj in self.onnx_model.graph.input]
@@ -283,8 +299,9 @@ class TorchOrtFactory:
 
         if list(sorted(self.weights_to_train)) != self.weights_to_train:
             raise ValueError(
-                "List of weights to train must be sorted but is not %r."
-                "" % self.weights_to_train)
+                "List of weights to train must be sorted but is not in %r. "
+                "You shoud use function onnx_rename_weights to do that "
+                "before calling this class." % self.weights_to_train)
 
         if self.graph_builder_config is None:
             initializer_names = [

@@ -10,6 +10,7 @@ Tutorial
     :maxdepth: 2
 
     tutorial_training_ml
+    benchmark
 
 The tutorial was tested with following version:
 

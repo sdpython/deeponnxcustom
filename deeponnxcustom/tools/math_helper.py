@@ -15,6 +15,19 @@ def decompose_permutation(perm):
         The function does not check *perm* is a permutation.
         If the input value is wrong, the execution could
         end up in an infinite loop.
+
+    .. runpython::
+        :showcode:
+
+        import pprint
+        from deeponnxcustom.tools.math_helper import decompose_permutation
+
+        pprint.pprint(decompose_permutation((1, 0)))
+        pprint.pprint(decompose_permutation((2, 0, 1)))
+        pprint.pprint(decompose_permutation((1, 4, 2, 3, 0)))
+
+    Function @see fn apply_transitions applies this series
+    of transitions.
     """
     perm = list(perm)
     transitions = []

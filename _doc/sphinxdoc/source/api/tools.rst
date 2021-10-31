@@ -15,4 +15,6 @@ Maths
 ONNX
 ++++
 
+.. autosignature:: deeponnxcustom.tools.onnx_helper.onnx_rename_weights
+
 .. autosignature:: deeponnxcustom.tools.onnx_helper.save_as_onnx

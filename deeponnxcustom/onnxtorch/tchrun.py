@@ -109,6 +109,17 @@ class OnnxTorchRuntime:
     torch functions.
 
     :param onnx_model: ONNX model
+
+    The class is very basic. It does not handle subgraphs and
+    supports a limited number of operators.
+
+    .. runpython::
+        :showcode:
+
+        import pprint
+        from deeponnxcustom.onnxtorch.tchrun import OnnxTorchRuntime
+
+        pprint.pprint(list(sorted(OnnxTorchRuntime._mapping)))
     """
 
     _mapping = {

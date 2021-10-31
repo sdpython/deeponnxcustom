@@ -16,7 +16,8 @@ except ImportError:
     TrainingSession = None
 import torch
 from torch.autograd import Function  # pylint: disable=C0411
-from deeponnxcustom.onnxtorch.torchort import TorchOrtFactory
+from deeponnxcustom.tools.onnx_helper import onnx_rename_weights
+from deeponnxcustom.onnxtorch import TorchOrtFactory
 
 
 class TestTorchOrt(ExtTestCase):
@@ -139,6 +140,8 @@ class TestTorchOrt(ExtTestCase):
             TestTorchOrt.MyReLUAdd, device, dtype, x, y, H)
 
         onx, weights = TestTorchOrt.MyReLUAdd_onnx(N, D_in, H, D_out, rename)
+        self.assertRaise(lambda: TorchOrtFactory(onx, weights), ValueError)
+        onx = onnx_rename_weights(onx)
         fact = TorchOrtFactory(onx, weights)
         cls = fact.create_class(enable_logging=True)
 
@@ -151,7 +154,6 @@ class TestTorchOrt(ExtTestCase):
         self.common_gradient(False)
 
     @unittest.skipIf(TrainingSession is None, reason="not training")
-    @unittest.skipIf(True, "still bugged")
     def test_gradient_order(self):
         self.common_gradient(True)
 
@@ -290,4 +292,5 @@ if __name__ == "__main__":
     # logger = logging.getLogger('deeponnxcustom')
     # logger.setLevel(logging.DEBUG)
     # logging.basicConfig(level=logging.DEBUG)
+    # TestTorchOrt().test_gradient_order()
     unittest.main()

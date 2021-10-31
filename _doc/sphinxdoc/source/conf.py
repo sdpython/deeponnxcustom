@@ -65,6 +65,8 @@ latex_elements['preamble'] += custom_preamble
 
 intersphinx_mapping.update({
     'torch': ('https://pytorch.org/docs/stable/', None),
+    'mlprodict':
+        ('http://www.xavierdupre.fr/app/mlprodict/helpsphinx/', None),
     'pandas_streaming':
         ('http://www.xavierdupre.fr/app/pyquickhelper/helpsphinx/', None),
 })
@@ -75,8 +77,11 @@ epkg_dictionary.update({
     'C': 'https://en.wikipedia.org/wiki/C_(programming_language)',
     'C++': 'https://en.wikipedia.org/wiki/C%2B%2B',
     'cython': 'https://cython.org/',
+    'DLPack': 'https://nnabla.readthedocs.io/en/latest/python/api/utils/dlpack.html',
     'DOT': 'https://www.graphviz.org/doc/info/lang.html',
     'ImageNet': 'http://www.image-net.org/',
+    'InferenceSession':
+        'https://onnxruntime.ai/docs/api/python/api_summary.html#onnxruntime.InferenceSession',
     'LightGBM': 'https://lightgbm.readthedocs.io/en/latest/',
     'lightgbm': 'https://lightgbm.readthedocs.io/en/latest/',
     'mlprodict':
@@ -101,17 +106,27 @@ epkg_dictionary.update({
     'onnxruntime-training':
         'https://github.com/microsoft/onnxruntime/tree/master/orttraining',
     'openmp': 'https://en.wikipedia.org/wiki/OpenMP',
+    'ORTModule': 'https://onnxruntime.ai/docs/',
+    'OrtModuleGraphBuilderConfiguration':
+        'http://www.xavierdupre.fr/app/deeponnxcustom/helpsphinx/glossary.html',
     'py-spy': 'https://github.com/benfred/py-spy',
     'pyinstrument': 'https://github.com/joerick/pyinstrument',
     'python': 'https://www.python.org/',
     'pytorch': 'https://pytorch.org/',
+    'RunOptions':
+        'https://onnxruntime.ai/docs/api/python/api_summary.html#onnxruntime.RunOptions',
     'scikit-learn': 'https://scikit-learn.org/stable/',
+    'SessionOptions':
+        'https://onnxruntime.ai/docs/api/python/api_summary.html#onnxruntime.SessionOptions',
     'skorch': 'https://skorch.readthedocs.io/en/stable/',
     'sklearn-onnx': 'https://github.com/onnx/sklearn-onnx',
     'sphinx-gallery': 'https://github.com/sphinx-gallery/sphinx-gallery',
     'Stochastic Gradient Descent':
         'https://en.wikipedia.org/wiki/Stochastic_gradient_descent',
+    'torch': 'https://pytorch.org/',
     'tqdm': 'https://github.com/tqdm/tqdm',
+    'TrainingSession':
+        'http://www.xavierdupre.fr/app/deeponnxcustom/helpsphinx/glossary.html',
     'TreeEnsembleRegressor':
         'https://github.com/onnx/onnx/blob/master/docs/Operators-ml.md'
         '#ai.onnx.ml.TreeEnsembleRegressor',

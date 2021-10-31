@@ -5,12 +5,12 @@ onnxtorch
 .. contents::
     :local:
 
-ONNX in torch
-+++++++++++++
+ONNX in torch autograd function
++++++++++++++++++++++++++++++++
 
-.. autosignature:: deeponnxcustom.onnxtorch.torchort.backward
+.. autosignature:: deeponnxcustom.onnxtorch.torchort.ort_backward
 
-.. autosignature:: deeponnxcustom.onnxtorch.torchort.forward
+.. autosignature:: deeponnxcustom.onnxtorch.torchort.ort_forward
 
 .. autosignature:: deeponnxcustom.onnxtorch.torchort.TorchOrtFactory
 
