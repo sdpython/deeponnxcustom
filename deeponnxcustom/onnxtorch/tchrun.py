@@ -178,7 +178,7 @@ class OnnxTorchRuntime:
                         res[node_name][at.name] = at.i
                 if node.op_type == 'Transpose':
                     res[node_name][at.name] = tuple(at.ints)
-                elif node.op_type == 'Gather':
+                elif node.op_type in ('Gather', 'Concat'):
                     res[node_name][at.name] = at.i
                 elif node.op_type == 'Gemm':
                     if at.name in ('alpha', 'beta'):

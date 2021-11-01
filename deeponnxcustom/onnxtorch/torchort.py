@@ -399,7 +399,7 @@ class TorchOrtFactory:
         if enable_logging:
             logger = logging.getLogger("deeponnxcustom")
         else:
-            logger = None
+            logger = None  # pragma: no cover
 
         doc = dedent("""Use onnxruntime to compute the gradient
                         in a pytorch function.""")
