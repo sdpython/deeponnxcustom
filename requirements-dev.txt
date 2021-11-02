@@ -4,10 +4,12 @@ cerberus
 codecov
 coverage
 cpyquickhelper
+cxxfilt
 flake8
 h5py
 joblib
 jupyter_sphinx
+jyquickhelper
 lightgbm
 loky
 matplotlib
@@ -20,6 +22,7 @@ openpyxl
 pillow
 py-spy
 pandas
+pandas_streaming>=0.3
 pydot
 pyinstrument
 pylint
