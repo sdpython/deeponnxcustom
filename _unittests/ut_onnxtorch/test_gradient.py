@@ -21,7 +21,6 @@ class TestGradient(ExtTestCase):
                 "The maximum atol is %r, maximum rtol is %r." % (
                     max_atol, max_rtol))
 
-    @ignore_warnings(UserWarning)
     def assert_gradients_match_and_reset_gradient(
             self, ort_model, pt_model, none_pt_params=None,
             reset_gradient=True, rtol=1e-05, atol=1e-06):

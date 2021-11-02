@@ -86,6 +86,8 @@ class TestOrtValue(ExtTestCase):
             new_array = t.numpy()
             assert_almost_equal(numpy_arr_input, new_array)
 
+    @unittest.skipIf(not hasattr(C_OrtValue, "__dlpack__"),
+                     reason="onnxruntime too old")
     def test_ortvalue_dlpack(self):
         numpy_arr_input = numpy.array(
             [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], dtype=numpy.float32)
