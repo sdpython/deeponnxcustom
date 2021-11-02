@@ -31,7 +31,7 @@ class TestCodeStyle(ExtTestCase):
                 'C0103', 'C1801', 'R0201', 'R1705', 'W0108', 'W0613',
                 'C0111', 'W0107', 'C0111', 'R1702', 'C0415', "R1720",
                 'R1732', 'C0209', 'C0302', 'R1725'),
-            skip=[])
+            skip=["E1101: Module 'torch' has no "])
 
 
 if __name__ == "__main__":
