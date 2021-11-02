@@ -20,6 +20,20 @@ def save_as_onnx(model, filename, size=None, target_opset=14,
     :param batch_size: batch size
     :param device: device
     :param keep_initializers_as_inputs: see :func:`torch.onnx.export`
+
+    .. exref::
+        :title: Export a torch model into ONNX
+
+        ::
+
+            import torch
+            from deeponnxcustom.tools.onnx_helper import save_as_onnx
+
+            class MyModel(torch.nn.Module):
+                # ...
+
+            nn = MyModel()
+            save_as_onnx(nn, "my_model.onnx")
     """
     import torch  # pylint: disable=C0415
 

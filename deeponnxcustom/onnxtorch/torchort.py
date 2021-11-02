@@ -33,6 +33,23 @@ class TorchOrtFunction(Function):
     It implements simple functions to move the ownership of tensors
     from *onnxruntime* to *pytorch* (or the other way around)
     through :epkg:`DLPack` structures.
+    This class requires :epkg:`onnxruntime_training`.
+
+    .. faqref::
+        :title: Differences between onnxruntime and onnxruntime-training
+
+        onnxruntime-training is an extension of onnxruntime
+        that supports training. Version 1.10 is obtained by compiling
+        onnxruntime from the sources with different flags.
+        One example:
+
+        ::
+
+            python ./tools/ci_build/build.py --build_dir ./build/debian \\
+                   --config Release --build_wheel --numpy_version= \\
+                   --skip_tests --build_shared_lib --enable_training \\
+                   --enable_training_ops --enable_training_torch_interop \\
+                   --parallel
     """
 
     @staticmethod

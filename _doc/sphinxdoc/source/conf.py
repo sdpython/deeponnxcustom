@@ -67,7 +67,11 @@ intersphinx_mapping.update({
     'torch': ('https://pytorch.org/docs/stable/', None),
     'mlprodict':
         ('http://www.xavierdupre.fr/app/mlprodict/helpsphinx/', None),
+    'onnxcustom':
+        ('http://www.xavierdupre.fr/app/onnxcustom/helpsphinx/', None),
     'pandas_streaming':
+        ('http://www.xavierdupre.fr/app/pyquickhelper/helpsphinx/', None),
+    'pyquickhelper':
         ('http://www.xavierdupre.fr/app/pyquickhelper/helpsphinx/', None),
 })
 

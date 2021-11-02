@@ -5,6 +5,11 @@ Other pages
 .. toctree::
     :maxdepth: 1
 
+    i_cmd
+    i_ex
+    i_faq
+    README
+    HISTORY
     all_indexes
     all_report
     filechanges
@@ -13,5 +18,4 @@ Other pages
     index_method
     index_module
     index_staticmethod
-    README
     blog/blogindex.rst

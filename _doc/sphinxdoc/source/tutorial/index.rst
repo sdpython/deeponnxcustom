@@ -4,7 +4,9 @@ Tutorial
 
 .. index:: tutorial
 
-...in progess...
+The following examples explores the training of a deep or not
+so deep machine learning model and the combination of :epkg:`pytorch`
+and :epkg:`onnxruntime_training`.
 
 .. toctree::
     :maxdepth: 2

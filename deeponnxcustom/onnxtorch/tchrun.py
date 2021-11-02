@@ -49,8 +49,13 @@ class _function_OnnxTorchRuntime:
             raise NotImplementedError(
                 "Unable to prod(...) with shape=%r axes=%r keepdims=%r." % (
                     tuple(data.shape), axes, keepdims))
+        if len(axes) != 1:
+            for a in reversed(axes):
+                data = torch.prod(  # pylint: disable=E1101
+                    data, dim=a, keepdim=keepdims == 1)
+            return data
         return torch.prod(  # pylint: disable=E1101
-            data, dim=axes, keepdim=keepdims == 1)
+            data, dim=axes[0], keepdim=keepdims == 1)
 
     @staticmethod
     def _reducesum(data, axes=None, keepdims=1):

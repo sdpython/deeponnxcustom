@@ -52,6 +52,7 @@ This project leverages :epkg:`ONNX` to train models.
     doc
     api/index
     gyexamples/index
+    all_notebooks
     glossary
     i_cmd
     HISTORY
