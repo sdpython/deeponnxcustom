@@ -3,7 +3,7 @@
 """
 import unittest
 import copy
-from pyquickhelper.pycode import ExtTestCase
+from pyquickhelper.pycode import ExtTestCase, ignore_warnings
 import torch
 from onnxruntime.training.ortmodule import ORTModule
 
@@ -21,6 +21,7 @@ class TestGradient(ExtTestCase):
                 "The maximum atol is %r, maximum rtol is %r." % (
                     max_atol, max_rtol))
 
+    @ignore_warnings(UserWarning)
     def assert_gradients_match_and_reset_gradient(
             self, ort_model, pt_model, none_pt_params=None,
             reset_gradient=True, rtol=1e-05, atol=1e-06):
@@ -81,6 +82,7 @@ class TestGradient(ExtTestCase):
             self.assert_values_are_close(ort_prediction, pt_prediction)
             self.assert_gradients_match_and_reset_gradient(ort_model, pt_model)
 
+    @ignore_warnings(UserWarning)
     def test_gradient_correctness(self):
         for device_name in ['cuda:0', 'cpu']:
             if device_name == 'cuda:0' and not torch.cuda.is_available():
