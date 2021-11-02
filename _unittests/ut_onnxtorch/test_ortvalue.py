@@ -138,6 +138,8 @@ class TestOrtValue(ExtTestCase):
             ovar = ov.numpy()
             assert_almost_equal(ar, ovar)
 
+    @unittest.skipIf(not hasattr(OrtValueVector, "to_dlpack"),
+                     reason="onnxruntime too old")
     def test_ortvalue_vector_dlpack(self):
         narrays = [
             numpy.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]],
