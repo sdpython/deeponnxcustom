@@ -29,7 +29,6 @@ from mlprodict.plotting.plotting_onnx import plot_onnx
 from tqdm import tqdm
 import torch
 import torch.nn.functional as F
-import onnxruntime.training.ortmodule
 from onnxruntime.training import ORTModule
 from deeponnxcustom.tools.onnx_helper import save_as_onnx
 
