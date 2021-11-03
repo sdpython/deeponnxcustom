@@ -152,9 +152,6 @@ class TestOrtValue(ExtTestCase):
             ptr.append(ortvalue.data_ptr())
         self.assertEqual(len(vect), 2)
 
-        def my_to_tensor(dlpack_structure):
-            return C_OrtValue.from_dlpack(dlpack_structure, False)
-
         ortvalues = vect.to_dlpack(my_to_tensor)
         self.assertEqual(len(ortvalues), len(vect))
         cf = [sys.getrefcount(o) for o in ortvalues]

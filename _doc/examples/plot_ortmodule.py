@@ -29,8 +29,21 @@ from mlprodict.plotting.plotting_onnx import plot_onnx
 from tqdm import tqdm
 import torch
 import torch.nn.functional as F
+import onnxruntime.training.ortmodule
 from onnxruntime.training import ORTModule
 from deeponnxcustom.tools.onnx_helper import save_as_onnx
+
+
+def from_numpy(v, device=None, requires_grad=False):
+    """
+    Convers a numpy array into a torch array and
+    sets *device* and *requires_grad*.
+    """
+    v = torch.from_numpy(v)
+    if device is not None:
+        v = v.to(device)
+    v.requires_grad_(requires_grad)
+    return v
 
 
 def build_class_model():
@@ -198,8 +211,11 @@ nn = cls_net(n_features, hidden_layer_sizes, 1)
 
 device = "cuda" if get_device() == 'GPU' else 'cpu'
 
+t_x_train = from_numpy(X_train, device=device)
+t_y_train = from_numpy(y_train, device=device)
+
 trained_nn_tch, losses_tch, duration = train_model(
-    copy.deepcopy(nn), X_train, y_train, verbose=True,
+    copy.deepcopy(nn), t_x_train, t_y_train, verbose=True,
     device=device, learning_rate_init=1e-4)
 
 print("Torch, %d iterations, final loss=%f, duration=%f" % (
@@ -232,8 +248,8 @@ df.plot(title="Training loss / iterations")
 
 N = X_test.shape[0]
 
-t_x_test = torch.from_numpy(X_test)
-t_y_test = torch.from_numpy(y_test)
+t_x_test = from_numpy(X_test, device=device)
+t_y_test = from_numpy(y_test, device=device)
 
 pred_tch = trained_nn_tch(t_x_test)
 pred_ort = trained_nn_ort(t_x_test)

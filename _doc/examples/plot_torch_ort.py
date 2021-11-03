@@ -198,6 +198,7 @@ print("device:", device)
 
 x = numpy.random.randn(N, d_in).astype(numpy.float32)
 y = numpy.random.randn(N, d_out).astype(numpy.float32)
+
 train_losses, final_weights = train_cls(cls, device, x, y, weights)
 
 pprint.pprint(final_weights)
