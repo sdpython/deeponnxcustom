@@ -5,6 +5,7 @@ import unittest
 import copy
 import gc
 import time
+import sys
 import numpy
 from numpy.testing import assert_almost_equal
 from pyquickhelper.pycode import ExtTestCase, ignore_warnings
@@ -138,9 +139,7 @@ class TestOrtValue(ExtTestCase):
             ovar = ov.numpy()
             assert_almost_equal(ar, ovar)
 
-    @unittest.skipIf(not hasattr(OrtValueVector, "to_dlpack"),
-                     reason="onnxruntime too old")
-    def test_ortvalue_vector_dlpack(self):
+    def ortvalue_vector_dlpack(self, my_to_tensor):
         narrays = [
             numpy.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]],
                         dtype=numpy.float32),
@@ -158,6 +157,10 @@ class TestOrtValue(ExtTestCase):
 
         ortvalues = vect.to_dlpack(my_to_tensor)
         self.assertEqual(len(ortvalues), len(vect))
+        cf = [sys.getrefcount(o) for o in ortvalues]
+        memo = [numpy.array([[0, 1]]), dict(a=3)]
+        cf2 = [sys.getrefcount(o) for o in memo]
+        self.assertEqual(cf, cf2)
 
         ptr2 = []
         for av1, v2 in zip(narrays, ortvalues):
@@ -165,6 +168,22 @@ class TestOrtValue(ExtTestCase):
             av2 = v2.numpy()
             assert_almost_equal(av1, av2)
         self.assertEqual(ptr, ptr2)
+
+    @unittest.skipIf(not hasattr(OrtValueVector, "to_dlpack"),
+                     reason="onnxruntime too old")
+    def test_ortvalue_vector_dlpack(self):
+
+        def my_to_tensor(dlpack_structure):
+            return C_OrtValue.from_dlpack(dlpack_structure, False)
+        self.ortvalue_vector_dlpack(my_to_tensor)
+
+    @unittest.skipIf(not hasattr(OrtValueVector, "to_dlpack"),
+                     reason="onnxruntime too old")
+    def test_ortvalue_vector_dlpack_torch(self):
+
+        def my_to_tensor(dlpack_structure):
+            return _from_dlpack(dlpack_structure)
+        self.ortvalue_vector_dlpack(my_to_tensor)
 
     def ortmodule_dlpack(self, device):
 
@@ -211,4 +230,4 @@ class TestOrtValue(ExtTestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(verbosity=2)
