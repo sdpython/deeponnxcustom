@@ -153,6 +153,9 @@ class TestOrtValue(ExtTestCase):
         self.assertEqual(len(vect), 2)
 
         ortvalues = vect.to_dlpack(my_to_tensor)
+        if my_to_tensor is None:
+            self.assertIn("PyCapsule", str(type(ortvalues[0])))
+            ortvalues = [C_OrtValue.from_dlpack(o, False) for o in ortvalues]
         self.assertEqual(len(ortvalues), len(vect))
         cf = [sys.getrefcount(o) for o in ortvalues]
         memo = [numpy.array([[0, 1]]), dict(a=3)]
@@ -181,6 +184,14 @@ class TestOrtValue(ExtTestCase):
         def my_to_tensor(dlpack_structure):
             return _from_dlpack(dlpack_structure)
         self.ortvalue_vector_dlpack(my_to_tensor)
+
+    @unittest.skipIf(not hasattr(OrtValueVector, "to_dlpack"),
+                     reason="onnxruntime too old")
+    def test_ortvalue_vector_dlpack_none(self):
+
+        def my_to_tensor(dlpack_structure):
+            return _from_dlpack(dlpack_structure)
+        self.ortvalue_vector_dlpack(None)
 
     def ortmodule_dlpack(self, device):
 
