@@ -94,7 +94,7 @@ print("device:", device)
 d_in, d_out, N = 2, 1, 100
 x = numpy.random.randn(N, d_in).astype(numpy.float32)
 y = numpy.random.randn(N, d_out).astype(numpy.float32)
-model = NLayerNet(d_in, d_out)
+model = ORTModule(NLayerNet(d_in, d_out))
 
 train_losses = train_model(model, device, x, y, n_iter=10)
 train_losses = numpy.array([t.cpu().detach().numpy().ravel()
