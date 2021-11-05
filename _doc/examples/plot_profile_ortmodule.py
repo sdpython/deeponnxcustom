@@ -43,7 +43,7 @@ def from_numpy(v, device=None, requires_grad=False):
 class NLayerNet(torch.nn.Module):
     def __init__(self, D_in, D_out, lay=2):
         super(NLayerNet, self).__init__()
-        H = 2
+        H = 20
         self.linears = [torch.nn.Linear(D_in, H)
                         for n in range(lay)]
         self.linear2 = torch.nn.Linear(H * lay, D_out)
@@ -97,7 +97,8 @@ y = numpy.random.randn(N, d_out).astype(numpy.float32)
 model = ORTModule(NLayerNet(d_in, d_out))
 
 train_losses = train_model(model, device, x, y, n_iter=10)
-train_losses = numpy.array([t.detach().numpy().ravel() for t in train_losses])
+train_losses = numpy.array([t.cpu().detach().numpy().ravel()
+                            for t in train_losses])
 
 df = DataFrame(data=train_losses, columns=['train_loss'])
 df['iter'] = df.index + 1
