@@ -2,6 +2,7 @@
 @brief      test log(time=3s)
 """
 import unittest
+import pprint
 from pyquickhelper.pycode import ExtTestCase
 import numpy
 from onnx.numpy_helper import to_array
@@ -16,7 +17,7 @@ from deeponnxcustom.onnxtorch import TorchOrtFactory
 
 class TestTorchOrtExtended(ExtTestCase):
 
-    def common_mlp_regressor(self, device):
+    def common_mlp_regressor(self, device, debug=False):
         data = load_diabetes()
         X, y = data.data, data.target  # pylint: disable=E1101
         y /= 100
@@ -31,6 +32,8 @@ class TestTorchOrtExtended(ExtTestCase):
                    if 'shape' not in init.name]
         fact = TorchOrtFactory(nn_onnx, [w[0] for w in weights])
         cls = fact.create_class()
+        if debug:
+            pprint.pprint(cls.__dict__)
 
         def from_numpy(v, device=None, requires_grad=False):
             v = torch.from_numpy(v)
@@ -80,7 +83,7 @@ class TestTorchOrtExtended(ExtTestCase):
     def test_mlp_regressor_cpu(self):
         device_name = "cpu"
         device = torch.device(device_name)
-        self.common_mlp_regressor(device)
+        self.common_mlp_regressor(device, debug=False)
 
 
 if __name__ == "__main__":
@@ -88,5 +91,5 @@ if __name__ == "__main__":
     # logger = logging.getLogger('deeponnxcustom')
     # logger.setLevel(logging.DEBUG)
     # logging.basicConfig(level=logging.DEBUG)
-    # TestTorchOrt().test_gradient_order()
+    # TestTorchOrtExtended().test_mlp_regressor_cpu()
     unittest.main()

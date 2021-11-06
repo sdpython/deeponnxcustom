@@ -328,10 +328,19 @@ class TorchOrtFactory:
             input_names = [i.name for i in self.onnx_model.graph.input]
 
             config = OrtModuleGraphBuilderConfiguration()
-            config.initializer_names = initializer_names
+            config.initializer_names = [init for init in initializer_names
+                                        if init in self.weights_to_train]
             config.initializer_names_to_train = self.weights_to_train
             config.input_names_require_grad = input_names
             config.build_gradient_graph = True
+
+            if (len(config.initializer_names) !=
+                    len(config.initializer_names_to_train)):
+                raise RuntimeError(
+                    "Unable to automatically fill "
+                    "OrtModuleGraphBuilderConfiguration, mismatch between "
+                    "%r and %r." % (config.initializer_names,
+                                    config.initializer_names_to_train))
 
             p = TrainingGraphTransformerConfiguration()
             config.graph_transformer_config = p
@@ -412,6 +421,45 @@ class TorchOrtFactory:
                     grad_input = grad_output.clone()
                     grad_input[input < 0] = 0
                     return grad_input
+
+        The new class has the following attributes:
+
+        * `__doc__`: doc string
+        * `__module__`: module name (this file)
+        * `_run_options`: see :epkg:`RunOptions`
+        * `_sess`: :epkg:`InferenceSession` with the original graph
+        * `_sess_eval`: :epkg:`InferenceSession` on the graph
+            with weights as inputs
+        * `_training_agent`: :epkg:`TrainingAgent`
+        * `_cache`: :epkg:`OrtValueCache`
+        * `_update_cache`: update the cache or not
+        * `_states`: a list
+        * `_logger`: logger
+        * `_input_names`: input names
+        * `_debug`: use debug mode
+        * `_grad_input_names`: gradient input names
+        * `_output_names`: output names
+        * `_weights_to_train`: names of the weights to train
+
+        Torch API:
+
+        * `forward`: forward static method
+        * `backward`: forward static method
+
+        Training attributes
+
+        * `_bw_fetches_names`: bw_fetches_names,
+        * `_fw_outputs_device_info`: fw_outputs_device_info,
+        * `_bw_outputs_device_info`: bw_outputs_device_info,
+        * `_fw_no_grad_output_device_info`: fw_no_grad_output_device_info,
+        * `_graph_info`: graph_info}
+
+        Additional attributes added if *keep_model* is True:
+
+        * `_trained_onnx`: ONNX graph for the gradient
+        * `_optimized_pre_grad_model`: evaluation ONNX graph taking
+            weights as inputs
+        * `_graph_builder`: :epkg:`OrtModuleGraphBuilder`
         """
         if enable_logging:
             logger = logging.getLogger("deeponnxcustom")
@@ -573,6 +621,13 @@ class TorchOrtFactory:
                     BytesIO(optimized_pre_grad_model)),
                 _graph_builder=builder,
                 _factory=self))
+
+            onx_inp = [o.name for o in kwargs['_trained_onnx'].graph.input]
+            onx_out = [o.name for o in kwargs['_trained_onnx'].graph.output]
+            if len(onx_inp) != len(onx_out):
+                raise RuntimeError(
+                    "Gradient input and output are inconsistant: "
+                    "%r != %r" % (onx_inp, onx_out))
 
         newclass = type(self.class_name, (TorchOrtFunction,), kwargs)
         return newclass
