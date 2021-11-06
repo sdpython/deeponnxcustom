@@ -59,3 +59,4 @@ _unittests/ut_documentation/*.dot
 _doc/examples/plot_einsum.csv
 _doc/examples/plot_einsum.png
 _doc/examples/plot_einsum.xlsx
+_doc/notebooks/.ipynb_checkpoints/*

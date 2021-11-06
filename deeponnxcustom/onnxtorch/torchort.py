@@ -334,8 +334,8 @@ class TorchOrtFactory:
             config.input_names_require_grad = input_names
             config.build_gradient_graph = True
 
-            if (len(config.initializer_names) !=
-                    len(config.initializer_names_to_train)):
+            if (len(config.initializer_names)
+                    != len(config.initializer_names_to_train)):
                 raise RuntimeError(
                     "Unable to automatically fill "
                     "OrtModuleGraphBuilderConfiguration, mismatch between "
