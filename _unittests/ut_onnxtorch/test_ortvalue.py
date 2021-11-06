@@ -188,9 +188,6 @@ class TestOrtValue(ExtTestCase):
     @unittest.skipIf(not hasattr(OrtValueVector, "to_dlpack"),
                      reason="onnxruntime too old")
     def test_ortvalue_vector_dlpack_none(self):
-
-        def my_to_tensor(dlpack_structure):
-            return _from_dlpack(dlpack_structure)
         self.ortvalue_vector_dlpack(None)
 
     def ortmodule_dlpack(self, device):
