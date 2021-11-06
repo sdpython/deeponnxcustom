@@ -334,7 +334,7 @@ class TorchOrtFactory:
             config.input_names_require_grad = input_names
             config.build_gradient_graph = True
 
-            if (len(config.initializer_names) !=
+            if (len(config.initializer_names) !=  # pylint: disable=W504
                     len(config.initializer_names_to_train)):
                 raise RuntimeError(
                     "Unable to automatically fill "
