@@ -188,7 +188,7 @@ def train_cls(cls, device, x, y, weights, n_iter=20, learning_rate=1e-2):
                 w -= w.grad * learning_rate
                 w.grad.zero_()
 
-        all_losses.append((t, float(loss.detach().numpy())))
+        all_losses.append((t, float(loss.cpu().detach().numpy())))
     return all_losses, weights_tch
 
 
@@ -200,8 +200,7 @@ x = numpy.random.randn(N, d_in).astype(numpy.float32)
 y = numpy.random.randn(N, d_out).astype(numpy.float32)
 
 train_losses, final_weights = train_cls(cls, device, x, y, weights)
-train_losses = numpy.array([t.cpu().detach().numpy().ravel()
-                            for t in train_losses])
+train_losses = numpy.array(train_losses)
 pprint.pprint(final_weights)
 
 #######################################
