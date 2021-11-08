@@ -302,14 +302,15 @@ class TorchOrtFactory:
         if self.class_name is None:
             self.class_name = "TorchOrtFunction_%r" % id(self)
         if hasattr(self.providers, 'type'):
-            self.device_index = self.providers.index
+            if self.providers.type != 'cpu':
+                self.device_index = self.providers.index
             self.providers = self.providers.type
         if self.providers in (None, 'cpu'):
             self.providers = ["CPUExecutionProvider" for i in self.input_names]
             if self.provider_options is None:
                 self.provider_options = [{} for i in self.input_names]
         elif self.providers in ('cuda', 'cuda:0', 'gpu'):
-            self.providers = ["GPUExecutionProvider" for i in self.input_names]
+            self.providers = ["CUDAExecutionProvider" for i in self.input_names]
             if self.provider_options is None:
                 self.provider_options = [{} for i in self.input_names]
         if self.run_options is None:
@@ -386,7 +387,7 @@ class TorchOrtFactory:
     def _provider_name_to_device_type(provider_name):
         if provider_name == 'CPUExecutionProvider':
             return OrtDevice.cpu()
-        if provider_name == 'GPUExecutionProvider':  # pragma: no cover
+        if provider_name == 'CUDAExecutionProvider':  # pragma: no cover
             return OrtDevice.cuda()
         raise ValueError(  # pragma: no cover
             'Unexpected provider name %r.' % provider_name)
