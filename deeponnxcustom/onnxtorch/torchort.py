@@ -301,6 +301,9 @@ class TorchOrtFactory:
                                  for obj in self.onnx_model.graph.output]
         if self.class_name is None:
             self.class_name = "TorchOrtFunction_%r" % id(self)
+        if hasattr(self.providers, 'type'):
+            self.device_index = self.providers.index
+            self.providers = self.providers.type
         if self.providers in (None, 'cpu'):
             self.providers = ["CPUExecutionProvider" for i in self.input_names]
             if self.provider_options is None:
