@@ -305,6 +305,10 @@ class TorchOrtFactory:
             self.providers = ["CPUExecutionProvider" for i in self.input_names]
             if self.provider_options is None:
                 self.provider_options = [{} for i in self.input_names]
+        elif self.providers in ('cuda', 'cuda:0', 'gpu'):
+            self.providers = ["GPUExecutionProvider" for i in self.input_names]
+            if self.provider_options is None:
+                self.provider_options = [{} for i in self.input_names]
         if self.run_options is None:
             self.run_options = RunOptions()
             self.run_options.training_mode = True
