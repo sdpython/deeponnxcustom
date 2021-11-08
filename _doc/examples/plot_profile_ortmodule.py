@@ -63,7 +63,8 @@ class NLayerNet(torch.nn.Module):
 # available. We try first a few iteation to see how it goes.
 
 
-def train_model(model, device, x, y, n_iter=100, learning_rate=1e-4):
+def train_model(model, device, x, y, n_iter=100, learning_rate=1e-4,
+                profiler=None):
     model = model.to(device)
     x = from_numpy(x, requires_grad=True, device=device)
     y = from_numpy(y, requires_grad=True, device=device)
@@ -83,6 +84,8 @@ def train_model(model, device, x, y, n_iter=100, learning_rate=1e-4):
 
         loss = step_train()
         losses.append(loss)
+        if profiler is not None:
+            profiler.step()
 
     return losses
 
@@ -152,6 +155,22 @@ def clean_text(x):
 root, nodes = profile2graph(ps, clean_text=clean_text)
 text = root.to_text(fct_width=70)
 print(text)
+
+###########################################
+# Torch profiler
+# ++++++++++++++
+
+model = ORTModule(NLayerNet(d_in, d_out))
+train_model(model, device, x, y, n_iter=2)
+
+with torch.profiler.profile(
+        activities=[torch.profiler.ProfilerActivity.CPU,
+                    torch.profiler.ProfilerActivity.CUDA],
+        with_stack=True) as p:
+    train_model(model, device, x, y, n_iter=200, profiler=p)
+
+print(p.key_averages(group_by_stack_n=0).table(
+    sort_by="self_cuda_time_total", row_limit=-1))
 
 
 # plt.show()

@@ -208,5 +208,18 @@ root, nodes = profile2graph(ps, clean_text=clean_text)
 text = root.to_text(fct_width=70)
 print(text)
 
+###########################################
+# Torch profiler
+# ++++++++++++++
+
+with torch.profiler.profile(
+        activities=[torch.profiler.ProfilerActivity.CPU,
+                    torch.profiler.ProfilerActivity.CUDA],
+        with_stack=True) as p:
+    train_cls(cls, device, x, y, weights, n_iter=200)
+
+print(p.key_averages(group_by_stack_n=0).table(
+    sort_by="self_cuda_time_total", row_limit=-1))
+
 
 # plt.show()

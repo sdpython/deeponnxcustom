@@ -30,7 +30,8 @@ class TestTorchOrtExtended(ExtTestCase):
         weights = [(init.name, to_array(init))
                    for init in nn_onnx.graph.initializer
                    if 'shape' not in init.name]
-        fact = TorchOrtFactory(nn_onnx, [w[0] for w in weights], providers=device)
+        fact = TorchOrtFactory(nn_onnx, [w[0]
+                               for w in weights], providers=device)
         cls = fact.create_class()
         if debug:
             pprint.pprint(cls.__dict__)
