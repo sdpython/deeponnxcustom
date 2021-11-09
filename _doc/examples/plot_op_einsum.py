@@ -210,6 +210,8 @@ def benchmark_equation(equation, number=5, repeat=3):
     rs['ort_dec'] = rs['numpy.einsum'] / rs['ort_dec']
     if 'torch_einsum' in rs.columns:
         rs['torch_einsum'] = rs['numpy.einsum'] / rs['torch_einsum']
+    if 'torch_dec' in rs.columns:
+        rs['torch_dec'] = rs['numpy.einsum'] / rs['torch_dec']
     rs['numpy.einsum'] = 1.
 
     # Graphs.
