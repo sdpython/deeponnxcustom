@@ -63,7 +63,7 @@ class NLayerNet(torch.nn.Module):
 # available. We try first a few iteation to see how it goes.
 
 
-def train_model(model, device, x, y, n_iter=100, learning_rate=1e-4,
+def train_model(model, device, x, y, n_iter=100, learning_rate=1e-5,
                 profiler=None):
     model = model.to(device)
     x = from_numpy(x, requires_grad=True, device=device)
