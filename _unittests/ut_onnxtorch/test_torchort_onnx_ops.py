@@ -38,19 +38,6 @@ class TestTorchOrtOnnxOps(ExtTestCase):
 
         if name == "softmax":
 
-            class CustomSoftmax(torch.autograd.Function):
-                @staticmethod
-                def forward(ctx, x, weights, intercept):
-                    y = torch.softmax(x @ weights + intercept, 1)
-                    ctx.save_for_backward(x, weights, intercept, y)
-                    return y
-
-                @staticmethod
-                def backward(ctx, grad_output):
-                    x, weights, intercept, y = ctx.saved_tensors
-                    return torch.autograd.grad(
-                        y, [x, weights, intercept], grad_outputs=grad_output)
-
             X = numpy.random.randn(100, 4).astype(numpy.float32)
             self.assertEqual(X.shape, (100, 4))
             y = X.sum(axis=1) + numpy.random.randn(100) / 10
@@ -69,7 +56,7 @@ class TestTorchOrtOnnxOps(ExtTestCase):
             onnx_rename_weights(nn_onnx)
             weights = [(init.name, to_array(init))
                        for init in nn_onnx.graph.initializer]
-            return nn_onnx, weights, X, y, CustomSoftmax
+            return nn_onnx, weights, X, y, None
 
         raise AssertionError("Unexpected value %r." % name)
 
@@ -109,6 +96,8 @@ class TestTorchOrtOnnxOps(ExtTestCase):
             all_losses = []
             all_grads = []
             for t in range(n_iter):
+                if debug:
+                    print("iter %d/%d" % (t + 1, n_iter))
                 # forward - backward
                 y_pred = cls.apply(x, *weights_values)
                 loss = (y_pred - y).pow(2).sum()
@@ -130,7 +119,7 @@ class TestTorchOrtOnnxOps(ExtTestCase):
             cls_ort, device, X_train, y_train, weights, n_iter=n_iter)
         if cls_tch is not None:
             tch_train_losses, tch_final_weights, tch_all_grads = train_cls(
-                cls_tch, device, X, y, weights, n_iter=n_iter)
+                cls_tch, device, X_train, y_train, weights, n_iter=n_iter)
             self.assertEqual(tch_all_grads, ort_all_grads)
             self.assertEqual(tch_final_weights, ort_final_weights)
             self.assertEqual(tch_train_losses, ort_train_losses)
@@ -143,7 +132,7 @@ class TestTorchOrtOnnxOps(ExtTestCase):
                     continue
                 with self.subTest(name=name, device=device_name):
                     device = torch.device(device_name)
-                    self.common_onnx_graph(name, device)
+                    self.common_onnx_graph(name, device, debug=False)
 
 
 if __name__ == "__main__":
@@ -152,4 +141,4 @@ if __name__ == "__main__":
     # logger.setLevel(logging.DEBUG)
     # logging.basicConfig(level=logging.DEBUG)
     # TestTorchOrtOnnxOps().test_onnx_ops()
-    unittest.main()
+    unittest.main(verbosity=1)
