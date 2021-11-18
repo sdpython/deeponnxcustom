@@ -16,6 +16,7 @@ except ImportError:
     TrainingSession = None
 import torch
 from torch.autograd import Function  # pylint: disable=C0411
+from deeponnxcustom import __max_supported_opset__ as TARGET_OPSET
 from deeponnxcustom.tools.onnx_helper import onnx_rename_weights
 from deeponnxcustom.onnxtorch import TorchOrtFactory
 
@@ -40,13 +41,14 @@ class TestTorchOrt(ExtTestCase):
         var = [('X', FloatTensorType([N, D_in]))]
         w1 = numpy.random.randn(D_in, H).astype(numpy.float32)
         w2 = numpy.random.randn(H, D_out).astype(numpy.float32)
-        opv = 14
+        opv = TARGET_OPSET
         onx_alg = OnnxMatMul(
             OnnxRelu(OnnxMatMul(*var, w1, op_version=opv),
                      op_version=opv),
             w2, op_version=opv, output_names=['Y'])
         onx = onx_alg.to_onnx(
-            var, target_opset=opv, outputs=[('Y', FloatTensorType())])
+            var, target_opset=opv, outputs=[('Y', FloatTensorType())],
+            target_opset=TARGET_OPSET)
 
         weights = ['Ma_MatMulcst', 'Ma_MatMulcst1']
         if rename:

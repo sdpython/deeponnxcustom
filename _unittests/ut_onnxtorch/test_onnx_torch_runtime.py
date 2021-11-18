@@ -12,12 +12,11 @@ from mlprodict.testing.einsum.einsum_fct import _einsum
 from mlprodict.onnx_tools.onnx_manipulations import onnx_rename_names
 import torch
 from torch import from_numpy  # pylint: disable=E0611
+from deeponnxcustom import __max_supported_opset__ as TARGET_OPSET
 from deeponnxcustom.onnxtorch.tchrun import OnnxTorchRuntime
 
 
 class TestOnnxTorchRuntime(ExtTestCase):
-
-    _opv = 14
 
     def common_test(self, onnx_model, expected, *inputs, verbose=False):
         rt = OnnxTorchRuntime(onnx_model)
@@ -27,10 +26,10 @@ class TestOnnxTorchRuntime(ExtTestCase):
     @ignore_warnings(UserWarning)
     def test_onnx_torch_runtime(self):
         cst = numpy.array([[0, 1], [2, 3]], dtype=numpy.float32)
-        node = OnnxMatMul('X', cst, op_version=TestOnnxTorchRuntime._opv,
+        node = OnnxMatMul('X', cst, op_version=TARGET_OPSET,
                           output_names=['Y'])
         onx = node.to_onnx([('X', FloatTensorType())],
-                           target_opset=TestOnnxTorchRuntime._opv)
+                           target_opset=TARGET_OPSET)
 
         tx = torch.randn(2, 2)  # pylint: disable=E1101
         expected = tx @ torch.from_numpy(cst)  # pylint: disable=E1101
@@ -44,7 +43,7 @@ class TestOnnxTorchRuntime(ExtTestCase):
         for eq in equations:
             with self.subTest(eq=eq):
                 cache = _einsum(
-                    eq, numpy.float32, opset=TestOnnxTorchRuntime._opv,
+                    eq, numpy.float32, opset=TARGET_OPSET,
                     optimize=False, verbose=False, runtime="python")
                 onx = cache.onnx_
                 terms = eq.split('->', maxsplit=1)[0].split(',')
@@ -62,7 +61,7 @@ class TestOnnxTorchRuntime(ExtTestCase):
         for eq in equations:
             with self.subTest(eq=eq):
                 cache = _einsum(
-                    eq, numpy.float32, opset=TestOnnxTorchRuntime._opv,
+                    eq, numpy.float32, opset=TARGET_OPSET,
                     optimize=False, verbose=False, runtime="python")
                 onx = cache.onnx_
                 onx = onnx_rename_names(onx)
@@ -79,13 +78,13 @@ class TestOnnxTorchRuntime(ExtTestCase):
     @ignore_warnings(UserWarning)
     def test_torch_runtime_concatv(self):
         onx = OnnxConcat('X', 'Y', output_names=['Z'],
-                         op_version=TestOnnxTorchRuntime._opv)
+                         op_version=TARGET_OPSET)
         X = numpy.array([[1, 2], [3, 4]], dtype=numpy.float64)
         Y = numpy.array([[8, 9], [10, 11], [12, 13]], dtype=numpy.float64)
         model_def = onx.to_onnx({'X': X.astype(numpy.float32),
                                  'Y': Y.astype(numpy.float32)},
                                 outputs=[('Z', FloatTensorType([2]))],
-                                target_opset=TestOnnxTorchRuntime._opv)
+                                target_opset=TARGET_OPSET)
         tonx = OnnxTorchRuntime(model_def)
         Z = tonx.run(from_numpy(X), from_numpy(Y))
         self.assertEqualArray(numpy.vstack([X, Y]), Z.numpy())
@@ -93,14 +92,14 @@ class TestOnnxTorchRuntime(ExtTestCase):
     @ignore_warnings(UserWarning)
     def test_torch_runtime_concath(self):
         onx = OnnxConcat('X', 'Y', output_names=['Z'],
-                         op_version=TestOnnxTorchRuntime._opv,
+                         op_version=TARGET_OPSET,
                          axis=1)
         X = numpy.array([[1, 2], [3, 4]], dtype=numpy.float64)
         Y = numpy.array([[8, 9], [10, 11]], dtype=numpy.float64)
         model_def = onx.to_onnx({'X': X.astype(numpy.float32),
                                  'Y': Y.astype(numpy.float32)},
                                 outputs=[('Z', FloatTensorType([2]))],
-                                target_opset=TestOnnxTorchRuntime._opv)
+                                target_opset=TARGET_OPSET)
         tonx = OnnxTorchRuntime(model_def)
         Z = tonx.run(from_numpy(X), from_numpy(Y))
         self.assertEqualArray(numpy.hstack([X, Y]), Z.numpy())
@@ -108,11 +107,11 @@ class TestOnnxTorchRuntime(ExtTestCase):
     @ignore_warnings(UserWarning)
     def test_torch_runtime_concat1(self):
         onx = OnnxConcat('X', output_names=['Z'],
-                         op_version=TestOnnxTorchRuntime._opv)
+                         op_version=TARGET_OPSET)
         X = numpy.array([[1, 2], [3, 4]], dtype=numpy.float64)
         model_def = onx.to_onnx({'X': X.astype(numpy.float32)},
                                 outputs=[('Z', FloatTensorType([2]))],
-                                target_opset=TestOnnxTorchRuntime._opv)
+                                target_opset=TARGET_OPSET)
         tonx = OnnxTorchRuntime(model_def)
         Z = tonx.run(from_numpy(X))
         self.assertEqualArray(X, Z.numpy())
@@ -123,20 +122,20 @@ class TestOnnxTorchRuntime(ExtTestCase):
         X = numpy.array([[1, 2], [3, 4]], dtype=numpy.float32)
 
         onx = OnnxGemm('X', idi, cst, output_names=['Y'],
-                       op_version=TestOnnxTorchRuntime._opv,
+                       op_version=TARGET_OPSET,
                        alpha=5., beta=3.)
         model_def = onx.to_onnx({'X': idi.astype(numpy.float32)},
-                                target_opset=TestOnnxTorchRuntime._opv)
+                                target_opset=TARGET_OPSET)
         tonx = OnnxTorchRuntime(model_def)
         Z = tonx.run(from_numpy(X))
         exp_Z = numpy.dot(X, idi) * 5 + cst * 3
         self.assertEqualArray(exp_Z, Z.numpy(), decimal=5)
 
         onx = OnnxGemm('X', idi, cst, output_names=['Y'],
-                       op_version=TestOnnxTorchRuntime._opv,
+                       op_version=TARGET_OPSET,
                        alpha=5., beta=3., transA=1)
         model_def = onx.to_onnx({'X': idi.astype(numpy.float32)},
-                                target_opset=TestOnnxTorchRuntime._opv)
+                                target_opset=TARGET_OPSET)
         tonx = OnnxTorchRuntime(model_def)
         Z = tonx.run(from_numpy(X))
         exp_Z = numpy.dot(X.T, idi) * 5 + cst * 3
@@ -148,24 +147,24 @@ class TestOnnxTorchRuntime(ExtTestCase):
         X = numpy.array([[2, 1], [0, 1]], dtype=float)
 
         onx = cl('X', output_names=['Y'], keepdims=0,
-                 op_version=TestOnnxTorchRuntime._opv)
+                 op_version=TARGET_OPSET)
         model_def = onx.to_onnx({'X': X.astype(numpy.float32)},
-                                target_opset=TestOnnxTorchRuntime._opv)
+                                target_opset=TARGET_OPSET)
         tonx = OnnxTorchRuntime(model_def)
         self.assertRaise(lambda: tonx.run(from_numpy(X)), RuntimeError)
 
         onx = cl('X', output_names=['Y'], keepdims=0, axes=[1],
-                 op_version=TestOnnxTorchRuntime._opv)
+                 op_version=TARGET_OPSET)
         model_def = onx.to_onnx({'X': X.astype(numpy.float32)},
-                                target_opset=TestOnnxTorchRuntime._opv)
+                                target_opset=TARGET_OPSET)
         tonx = OnnxTorchRuntime(model_def)
         Z = tonx.run(from_numpy(X))
         self.assertEqualArray(X.sum(keepdims=0, axis=1), Z.numpy(), decimal=5)
 
         onx = cl('X', output_names=['Y'], keepdims=1, axes=[0, 1],
-                 op_version=TestOnnxTorchRuntime._opv)
+                 op_version=TARGET_OPSET)
         model_def = onx.to_onnx({'X': X.astype(numpy.float32)},
-                                target_opset=TestOnnxTorchRuntime._opv)
+                                target_opset=TARGET_OPSET)
         tonx = OnnxTorchRuntime(model_def)
         Z = tonx.run(from_numpy(X))
         self.assertEqualArray(
@@ -173,9 +172,9 @@ class TestOnnxTorchRuntime(ExtTestCase):
 
         X = X.ravel()
         onx = cl('X', output_names=['Y'], keepdims=0,
-                 op_version=TestOnnxTorchRuntime._opv)
+                 op_version=TARGET_OPSET)
         model_def = onx.to_onnx({'X': X.astype(numpy.float32)},
-                                target_opset=TestOnnxTorchRuntime._opv)
+                                target_opset=TARGET_OPSET)
         tonx = OnnxTorchRuntime(model_def)
         Z = tonx.run(from_numpy(X))
         self.assertEqualArray(X.sum(keepdims=0), Z.numpy(), decimal=5)
@@ -186,24 +185,24 @@ class TestOnnxTorchRuntime(ExtTestCase):
         X = numpy.array([[2, 1], [0, 1]], dtype=float)
 
         onx = cl('X', output_names=['Y'], keepdims=0,
-                 op_version=TestOnnxTorchRuntime._opv)
+                 op_version=TARGET_OPSET)
         model_def = onx.to_onnx({'X': X.astype(numpy.float32)},
-                                target_opset=TestOnnxTorchRuntime._opv)
+                                target_opset=TARGET_OPSET)
         tonx = OnnxTorchRuntime(model_def)
         self.assertRaise(lambda: tonx.run(from_numpy(X)), RuntimeError)
 
         onx = cl('X', output_names=['Y'], keepdims=0, axes=[1],
-                 op_version=TestOnnxTorchRuntime._opv)
+                 op_version=TARGET_OPSET)
         model_def = onx.to_onnx({'X': X.astype(numpy.float32)},
-                                target_opset=TestOnnxTorchRuntime._opv)
+                                target_opset=TARGET_OPSET)
         tonx = OnnxTorchRuntime(model_def)
         Z = tonx.run(from_numpy(X))
         self.assertEqualArray(X.prod(keepdims=0, axis=1), Z.numpy(), decimal=5)
 
         onx = cl('X', output_names=['Y'], keepdims=1, axes=[0, 1],
-                 op_version=TestOnnxTorchRuntime._opv)
+                 op_version=TARGET_OPSET)
         model_def = onx.to_onnx({'X': X.astype(numpy.float32)},
-                                target_opset=TestOnnxTorchRuntime._opv)
+                                target_opset=TARGET_OPSET)
         tonx = OnnxTorchRuntime(model_def)
         Z = tonx.run(from_numpy(X))
         self.assertEqualArray(
@@ -211,9 +210,9 @@ class TestOnnxTorchRuntime(ExtTestCase):
 
         X = X.ravel()
         onx = cl('X', output_names=['Y'], keepdims=0,
-                 op_version=TestOnnxTorchRuntime._opv)
+                 op_version=TARGET_OPSET)
         model_def = onx.to_onnx({'X': X.astype(numpy.float32)},
-                                target_opset=TestOnnxTorchRuntime._opv)
+                                target_opset=TARGET_OPSET)
         tonx = OnnxTorchRuntime(model_def)
         Z = tonx.run(from_numpy(X))
         self.assertEqualArray(X.prod(keepdims=0), Z.numpy(), decimal=5)
@@ -221,11 +220,11 @@ class TestOnnxTorchRuntime(ExtTestCase):
     @ignore_warnings(UserWarning)
     def test_torch_runtime_squeeze(self):
         onx = OnnxSqueeze('X', output_names=['Z'],
-                          op_version=TestOnnxTorchRuntime._opv)
+                          op_version=TARGET_OPSET)
         X = numpy.array([[[1, 2], [3, 4]]], dtype=numpy.float64)
         model_def = onx.to_onnx({'X': X.astype(numpy.float32)},
                                 outputs=[('Z', FloatTensorType([2]))],
-                                target_opset=TestOnnxTorchRuntime._opv)
+                                target_opset=TARGET_OPSET)
         tonx = OnnxTorchRuntime(model_def)
         Z = tonx.run(from_numpy(X))
         self.assertEqualArray(numpy.squeeze(X), Z.numpy())

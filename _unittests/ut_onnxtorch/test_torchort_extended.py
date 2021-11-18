@@ -11,6 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPRegressor
 from skl2onnx import to_onnx
 import torch
+from deeponnxcustom import __max_supported_opset__ as TARGET_OPSET
 from deeponnxcustom.tools.onnx_helper import onnx_rename_weights
 from deeponnxcustom.onnxtorch import TorchOrtFactory
 
@@ -24,7 +25,8 @@ class TestTorchOrtExtended(ExtTestCase):
         X_train, _, y_train, y_test = train_test_split(X, y)
         nn = MLPRegressor(hidden_layer_sizes=(20,), max_iter=2000)
         nn.fit(X_train, y_train)
-        nn_onnx = to_onnx(nn, X_train[1:].astype(numpy.float32))
+        nn_onnx = to_onnx(nn, X_train[1:].astype(numpy.float32),
+                          target_opset=TARGET_OPSET)
 
         onnx_rename_weights(nn_onnx)
         weights = [(init.name, to_array(init))
