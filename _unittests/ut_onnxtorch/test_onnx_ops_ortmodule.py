@@ -79,17 +79,23 @@ class TestOnnxOpsOrtModule(ExtTestCase):
             self.assert_gradients_match_and_reset_gradient(
                 ort_model, pt_model, **kwargs)
 
-        onnx_graph_inf = ort_model._torch_module._execution_manager._training_manager._onnx_models.exported_model
-        onnx_graph_train = ort_model._torch_module._execution_manager._training_manager._onnx_models.optimized_model
-        if debug:
-            with open("debug_%s_ortmodule_infer.onnx" % name, "wb") as f:
-                f.write(onnx_graph_inf.SerializeToString())
-            with open("debug_%s_ortmodule_train.onnx" % name, "wb") as f:
-                f.write(onnx_graph_train.SerializeToString())
-        self.assertIn('op_type: "%s"' % name, str(onnx_graph_inf))
-        if op_grad_type is not None:
-            self.assertIn('op_type: "%s"' %
-                          op_grad_type, str(onnx_graph_train))
+        if hasattr(ort_model._torch_module, '_execution_manager'):
+            onnx_graph_inf = ort_model._torch_module._execution_manager._training_manager._onnx_models.exported_model
+            onnx_graph_train = ort_model._torch_module._execution_manager._training_manager._onnx_models.optimized_model
+            if debug:
+                with open("debug_%s_ortmodule_infer.onnx" % name, "wb") as f:
+                    f.write(onnx_graph_inf.SerializeToString())
+                with open("debug_%s_ortmodule_train.onnx" % name, "wb") as f:
+                    f.write(onnx_graph_train.SerializeToString())
+            self.assertIn('op_type: "%s"' % name, str(onnx_graph_inf))
+            if op_grad_type is not None:
+                self.assertIn('op_type: "%s"' %
+                              op_grad_type, str(onnx_graph_train))
+        else:
+            warnings.warn(
+                "No attribute '_execution_manager' in ort_model._torch_module"
+                " in %r." % dir(ort_model._torch_module),
+                RuntimeWarning)
 
     def get_torch_model_name(self, name):
 
