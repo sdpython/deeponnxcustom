@@ -4,6 +4,7 @@
 import unittest
 import pprint
 from pyquickhelper.pycode import ExtTestCase, ignore_warnings
+from pyquickhelper.texthelper import compare_module_version
 import numpy
 from onnx.numpy_helper import to_array
 from sklearn.datasets import load_diabetes
@@ -18,10 +19,14 @@ from deeponnxcustom.tools.onnx_helper import onnx_rename_weights
 from deeponnxcustom.onnxtorch import TorchOrtFactory
 
 
-class TestTorchOrtOnnxOps(ExtTestCase):
+class TestOnnxOpsTorchOrt(ExtTestCase):
+
+    def test_torch_version(self):
+        self.assertIn(
+            compare_module_version(torch.__version__, '1.10.0'), (0, 1))
 
     def get_onnx_graph(self, name):
-        if name == "reg":
+        if name == "MatMul":
             data = load_diabetes()
             X, y = data.data, data.target  # pylint: disable=E1101
             y /= 100
@@ -34,10 +39,9 @@ class TestTorchOrtOnnxOps(ExtTestCase):
             weights = [(init.name, to_array(init))
                        for init in nn_onnx.graph.initializer
                        if 'shape' not in init.name]
-            return nn_onnx, weights, X, y, None
+            return nn_onnx, weights, X, y, None, None
 
-        if name == "softmax":
-
+        if name == "Softmax":
             X = numpy.random.randn(100, 4).astype(numpy.float32)
             self.assertEqual(X.shape, (100, 4))
             y = X.sum(axis=1) + numpy.random.randn(100) / 10
@@ -56,19 +60,29 @@ class TestTorchOrtOnnxOps(ExtTestCase):
             onnx_rename_weights(nn_onnx)
             weights = [(init.name, to_array(init))
                        for init in nn_onnx.graph.initializer]
-            return nn_onnx, weights, X, y, None
+            return nn_onnx, weights, X, y, None, 'SoftmaxGrad'
 
         raise AssertionError("Unexpected value %r." % name)
 
     def common_onnx_graph(self, name, device, n_iter=1, debug=False):
         test_data = self.get_onnx_graph(name)
-        onnx_graph, weights, X_train, y_train, torch_fct = test_data
+        (onnx_graph, weights, X_train, y_train, torch_fct,
+            op_grad_type) = test_data
+        self.assertIn('op_type: "%s"' % name, str(onnx_graph))
 
         # onnx part
         fact = TorchOrtFactory(
             onnx_graph, [w[0] for w in weights], providers=device)
         cls_ort = fact.create_class(keep_models=True, debug=debug)
         cls_tch = torch_fct
+
+        # training onnx
+        trained_onnx = cls_ort._trained_onnx
+        if op_grad_type is not None:
+            self.assertIn('op_type: "%s"' % op_grad_type, str(trained_onnx))
+        if debug:
+            with open("debug_%s_trained.onnx" % name, "wb") as f:
+                f.write(trained_onnx.SerializeToString())
 
         # torch part
 
@@ -126,7 +140,7 @@ class TestTorchOrtOnnxOps(ExtTestCase):
 
     @ignore_warnings(ConvergenceWarning)
     def test_onnx_ops(self):
-        for name in ['softmax', 'reg']:
+        for name in ['Softmax', 'MatMul']:
             for device_name in ['cpu', 'cuda:0']:
                 if device_name == 'cuda:0' and not torch.cuda.is_available():
                     continue
