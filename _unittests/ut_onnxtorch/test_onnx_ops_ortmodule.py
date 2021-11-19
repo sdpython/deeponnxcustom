@@ -3,6 +3,7 @@
 """
 import unittest
 import copy
+import warnings
 import numpy
 from pyquickhelper.pycode import ExtTestCase, ignore_warnings
 from pyquickhelper.texthelper import compare_module_version
