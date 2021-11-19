@@ -47,8 +47,7 @@ class TestTorchOrt(ExtTestCase):
                      op_version=opv),
             w2, op_version=opv, output_names=['Y'])
         onx = onx_alg.to_onnx(
-            var, target_opset=opv, outputs=[('Y', FloatTensorType())],
-            target_opset=TARGET_OPSET)
+            var, target_opset=opv, outputs=[('Y', FloatTensorType())])
 
         weights = ['Ma_MatMulcst', 'Ma_MatMulcst1']
         if rename:
