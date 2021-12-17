@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 from onnxruntime import InferenceSession
 from skl2onnx.common.data_types import FloatTensorType
 from skl2onnx.algebra.onnx_ops import OnnxEinsum
-from mlprodict.tools import measure_time
+from cpyquickhelper.numbers import measure_time
 from tqdm import tqdm
 from mlprodict.testing.experimental_c import (
     code_optimisation)
@@ -156,7 +156,7 @@ def benchmark_equation(equation, number=5, repeat=3):
                    loop_einsum=loop_einsum, loop_einsum_eq=loop_einsum_eq,
                    loop_einsum_eq_th=loop_einsum_eq_th)
         obs = measure_time(
-            "loop_einsum_eq(einsum, equation, xs, ys)",
+            lambda: loop_einsum_eq(numpy.einsum, equation, xs, ys),
             div_by_number=True, context=ctx, repeat=repeat, number=number)
         obs['dim'] = dim
         obs['fct'] = 'numpy.einsum'
@@ -165,7 +165,7 @@ def benchmark_equation(equation, number=5, repeat=3):
         # onnxruntime
         ctx['einsum'] = ort_einsum
         obs = measure_time(
-            "loop_einsum(einsum, xs, ys)",
+            lambda: loop_einsum(ort_einsum, xs, ys),
             div_by_number=True, context=ctx, repeat=repeat, number=number)
         obs['dim'] = dim
         obs['fct'] = 'ort_einsum'
@@ -174,7 +174,7 @@ def benchmark_equation(equation, number=5, repeat=3):
         # onnxruntime decomposed
         ctx['einsum'] = ort_einsum_decomposed
         obs = measure_time(
-            "loop_einsum(einsum, xs, ys)",
+            lambda: loop_einsum(ort_einsum_decomposed, xs, ys),
             div_by_number=True, context=ctx, repeat=repeat, number=number)
         obs['dim'] = dim
         obs['fct'] = 'ort_dec'
@@ -185,7 +185,7 @@ def benchmark_equation(equation, number=5, repeat=3):
         ctx['xs'] = [from_numpy(x) for x in xs]
         ctx['ys'] = [from_numpy(y) for y in ys]
         obs = measure_time(
-            "loop_einsum(einsum, xs, ys)",
+            lambda: loop_einsum(ort_torch_decomposed, ctx['xs'], ctx['ys']),
             div_by_number=True, context=ctx, repeat=repeat, number=number)
         obs['dim'] = dim
         obs['fct'] = 'torch_dec'
@@ -195,7 +195,8 @@ def benchmark_equation(equation, number=5, repeat=3):
             # torch
             ctx['einsum'] = torch_einsum
             obs = measure_time(
-                "loop_einsum_eq(einsum, equation, xs, ys)",
+                lambda: loop_einsum_eq(
+                    torch_einsum, equation, ctx['xs'], ctx['ys']),
                 div_by_number=True, context=ctx, repeat=repeat, number=number)
             obs['dim'] = dim
             obs['fct'] = 'torch_einsum'
