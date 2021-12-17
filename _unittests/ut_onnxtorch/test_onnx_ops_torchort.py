@@ -79,7 +79,7 @@ class TestOnnxOpsTorchOrt(ExtTestCase):
         # training onnx
         trained_onnx = cls_ort._trained_onnx
         if op_grad_type is not None:
-            self.assertIn('op_type: "%s"' % op_grad_type, str(trained_onnx))
+            self.assertIn('op_type: "%s' % op_grad_type, str(trained_onnx))
         if debug:
             with open("debug_%s_trained.onnx" % name, "wb") as f:
                 f.write(trained_onnx.SerializeToString())

@@ -88,9 +88,9 @@ class TestOnnxOpsOrtModule(ExtTestCase):
                     f.write(onnx_graph_inf.SerializeToString())
                 with open("debug_%s_ortmodule_train.onnx" % name, "wb") as f:
                     f.write(onnx_graph_train.SerializeToString())
-            self.assertIn('op_type: "%s"' % name, str(onnx_graph_inf))
+            self.assertIn('op_type: "%s' % name, str(onnx_graph_inf))
             if op_grad_type is not None:
-                self.assertIn('op_type: "%s"' %
+                self.assertIn('op_type: "%s' %
                               op_grad_type, str(onnx_graph_train))
         else:
             warnings.warn(
