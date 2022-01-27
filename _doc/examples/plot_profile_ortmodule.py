@@ -152,9 +152,12 @@ def clean_text(x):
     x = x.replace(folder, "").replace(folder2, "")
 
 
-root, nodes = profile2graph(ps, clean_text=clean_text)
-text = root.to_text(fct_width=70)
-print(text)
+try:
+    root, nodes = profile2graph(ps, clean_text=clean_text)
+    text = root.to_text(fct_width=70)
+    print(text)
+except RuntimeError as e:
+    print("structured profiling failed due to %r." % e)
 
 ###########################################
 # Torch profiler
