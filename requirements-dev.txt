@@ -27,7 +27,7 @@ pandas_streaming>=0.3
 pydata-sphinx-theme
 pydot
 pyinstrument
-pylint
+pylint>=2.14.0
 pyquickhelper>=1.10
 pytest
 pytest-cov
