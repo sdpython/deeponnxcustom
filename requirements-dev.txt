@@ -20,10 +20,11 @@ nbsphinx
 onnxconverter-common
 onnxmltools
 openpyxl
-pillow
-py-spy
 pandas
 pandas_streaming>=0.3
+pillow
+protobuf<4
+py-spy
 pydata-sphinx-theme
 pydot
 pyinstrument
