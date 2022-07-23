@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3.9.6
+      - image: cimg/python:3.10.5
     
     working_directory: ~/repo
     
@@ -22,8 +22,6 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            python -m venv venv
-            . venv/bin/activate
             pip install -r requirements.txt
             pip install -r requirements-dev.txt
             pip install onnxruntime-training
@@ -37,40 +35,29 @@ jobs:
       - run:
           name: compile and build
           command: |
-            . venv/bin/activate
             python setup.py build_ext --inplace
 
       - run:
           name: flake8
           command: |
-            . venv/bin/activate
             python -m flake8 --ignore=E501 deeponnxcustom
             python -m flake8 --ignore=E501 _doc/examples
 
       - run:
           name: run tests
           command: |
-            . venv/bin/activate
             python setup.py unittests
 
       - run:
           name: wheel
           command: |
-            . venv/bin/activate
             python setup.py bdist_wheel
             cp dist/*.whl test-reports
 
       - run:
           name: check speed
           command: |
-            . venv/bin/activate
             python -m deeponnxcustom check
-
-#      - run:
-#          name: documentation
-#          command: |
-#            . venv/bin/activate
-#            sphinx-build -D "sphinx_gallery_conf.filename_pattern=/plot_(?!long)" doc test-reports
 
       - store_artifacts:
           path: test-reports
