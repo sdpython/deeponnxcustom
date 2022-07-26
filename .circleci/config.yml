@@ -22,6 +22,12 @@ jobs:
             pip install onnxruntime-training
 #            python -c "from onnxruntime.training.ortmodule.torch_cpp_extensions import install as ortmodule_install;ortmodule_install.build_torch_cpp_extensions()"
 
+      - run:
+          name: install dependencies for ort
+          command: |
+            pip install torch_ort
+            python -m torch_ort.configure
+
       - save_cache:
           paths:
             - ./venv
