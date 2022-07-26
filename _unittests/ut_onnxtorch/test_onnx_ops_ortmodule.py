@@ -55,7 +55,7 @@ class TestOnnxOpsOrtModule(ExtTestCase):
                 ort_param.grad = None
                 pt_param.grad = None
 
-    def gradient_correctness(self, name, device, debug=False):
+    def gradient_correctness(self, name, device, debug=False, rtol=None):
         pt_model_cls, op_grad_type, kwargs = self.get_torch_model_name(name)
         if kwargs is None:
             kwargs = {}
@@ -70,6 +70,8 @@ class TestOnnxOpsOrtModule(ExtTestCase):
             loss.backward()
             return prediction
 
+        if rtol is not None:
+            kwargs['rtol'] = rtol
         for _ in range(10):
             x = torch.randn(N, D_in, device=device)
             pt_prediction = run_step(pt_model, x)
@@ -174,7 +176,7 @@ class TestOnnxOpsOrtModule(ExtTestCase):
                     continue
                 with self.subTest(name=name, device=device_name):
                     device = torch.device(device_name)
-                    self.gradient_correctness(name, device)
+                    self.gradient_correctness(name, device, rtol=1e-4)
 
 
 if __name__ == "__main__":
