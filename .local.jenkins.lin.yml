@@ -19,6 +19,8 @@ install:
   - $PYINT -m pip install -r requirements-dev.txt
   - $PYINT -m pip install funcparserlib==1.0.0a0
   # - $PYINT -c "from onnxruntime.training.ortmodule.torch_cpp_extensions import install as ortmodule_install;ortmodule_install.build_torch_cpp_extensions()"
+  - $PYINT -m pip install torch_ort
+  - $PYINT -m torch_ort.configure
   - $PYINT --version
   - $PYINT -m pip freeze
 
