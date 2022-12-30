@@ -15,8 +15,9 @@ local_template = os.path.join(os.path.abspath(
 
 set_sphinx_variables(__file__, "deeponnxcustom", "Xavier Dupré", 2021,
                      "pydata_sphinx_theme", ['_static'],
-                     locals(), extlinks=dict(
-                         issue=('https://github.com/sdpython/deeponnxcustom/issues/%s', 'issue')),
+                     locals(), extlinks=dict(issue=(
+                         'https://github.com/sdpython/deeponnxcustom/issues/%s',
+                         'issue %s')),
                      title="deeponnxcustom", book=True, branch='main')
 
 extensions.extend([
