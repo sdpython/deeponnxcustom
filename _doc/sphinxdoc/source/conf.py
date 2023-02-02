@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.split(__file__)[0])))
 local_template = os.path.join(os.path.abspath(
     os.path.dirname(__file__)), "phdoc_templates")
 
-set_sphinx_variables(__file__, "deeponnxcustom", "Xavier Dupré", 2021,
+set_sphinx_variables(__file__, "deeponnxcustom", "Xavier Dupré", 2023,
                      "pydata_sphinx_theme", ['_static'],
                      locals(), extlinks=dict(issue=(
                          'https://github.com/sdpython/deeponnxcustom/issues/%s',
@@ -28,7 +28,7 @@ blog_root = "http://www.xavierdupre.fr/app/deeponnxcustom/helpsphinx/"
 
 html_css_files = ['my-styles.css']
 
-html_logo = "phdoc_static/project_ico.png"
+html_logo = "_static/project_ico.png"
 html_sidebars = {}
 language = "en"
 

@@ -43,7 +43,7 @@
 deeponnxcustom: custom ONNX and deep learning
 =============================================
 
-.. image:: https://raw.githubusercontent.com/sdpython/deeponnxcustom/main/_doc/sphinxdoc/source/phdoc_static/project_ico.png
+.. image:: https://raw.githubusercontent.com/sdpython/deeponnxcustom/main/_doc/sphinxdoc/source/_static/project_ico.png
     :width: 50
 
 `documentation <http://www.xavierdupre.fr/app/deeponnxcustom/helpsphinx/index.html>`_
